@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gesturecore Editor</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Import map for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
+    <!-- MediaPipe removed for baseline isolation -->
+</head>
+<body>
+    <!-- Error Display UI -->
+    <div id="debug-error-box" style="display:none; position:fixed; top:0; left:0; width:100%; max-height: 50vh; overflow-y:auto; background:red; color:white; padding:20px; z-index:999999; font-family:monospace; white-space:pre-wrap; font-size: 16px;"></div>
+    <script>
+        window.addEventListener('error', function(e) {
+            var box = document.getElementById('debug-error-box');
+            box.style.display = 'block';
+            box.innerHTML += 'ERROR: ' + e.message + ' at ' + e.filename + ':' + e.lineno + '\n';
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            var box = document.getElementById('debug-error-box');
+            box.style.display = 'block';
+            box.innerHTML += 'PROMISE REJECTION: ' + (e.reason && e.reason.stack ? e.reason.stack : e.reason) + '\n';
+        });
+    </script>
+    <!-- Lock Screen Overlay -->
+    <div id="lock-screen-overlay" class="hidden">
+        <div class="lock-bg-glow"></div>
+        <div class="lock-bg-grid"></div>
+        <div class="lock-container">
+            <h1 class="lock-title">LOCKED</h1>
+            <p class="lock-subtitle">Slide to unlock securely</p>
+            
+            <div class="slider-wrapper">
+                <input type="range" min="0" max="100" value="0" id="unlock-slider" class="unlock-slider">
+                <div class="slider-text">SLIDE TO UNLOCK</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Gate Overlay (Premium Landing Page) -->
+    <div id="login-overlay" class="premium-workspace-shell holomodel-landing">
+        <!-- Top Nav -->
+        <header class="workspace-header landing-header">
+            <div class="logo">Gesturecore <span>PRO</span></div>
+
+            <div class="header-status">
+                <span class="status-pill">Secure Access Mode</span>
+            </div>
+        </header>
+
+        <div class="landing-body">
+            <!-- Left Content: Hero Text & Auth Card -->
+            <div class="hero-content">
+                <h1 class="hero-title">Design in 3D<br>with <span class="text-gradient">your hands</span></h1>
+                <p class="hero-subtitle">The next generation 3D modeling platform. Use hand gestures, voice commands, and facial recognition to create, edit, and bring ideas to life securely.</p>
+                
+                <div class="hero-feature-pills">
+                    <span>✋ Hand Tracking</span>
+                    <span>🎤 Voice Commands</span>
+                    <span>👁️ Secure Face Login</span>
+                </div>
+
+                <div class="login-container premium-auth-card landing-auth-card">
+                    <div class="login-header">
+                        <h2>Gesturecore Secure Access</h2>
+                        <h3 id="login-greeting">Welcome, User</h3>
+                    </div>
+                    
+                    <div id="login-camera-panel" class="scan-panel">
+                        <div class="scan-frame premium-scan-frame">
+                            <video id="login-video" autoplay playsinline muted></video>
+                            <canvas id="login-canvas"></canvas>
+                            <div class="scan-line hidden" id="scan-line"></div>
+                        </div>
+                        
+                        <div class="login-status-board hidden">
+                            <!-- Raw diagnostics hidden in normal UI -->
+                            <div class="status-row"><span>Camera:</span> <strong id="login-status-camera">Waiting</strong></div>
+                            <div class="status-row"><span>Face:</span> <strong id="login-status-face">Not Detected</strong></div>
+                            <div class="status-row"><span>Auth:</span> <strong id="login-status-auth" class="waiting">Waiting</strong></div>
+                        </div>
+                        <p id="clean-status-message" class="clean-status">Initializing Secure Scan...</p>
+                    </div>
+
+                    <div id="login-pin-panel" class="hidden">
+                        <p>Enter your 7-digit PIN</p>
+                        <input type="password" id="login-pin-input" maxlength="7" placeholder="•••••••" autocomplete="off" />
+                        <p id="login-pin-error" class="error-msg hidden">Incorrect PIN</p>
+                    </div>
+                    
+                    <div id="login-enroll-panel" class="hidden">
+                        <p class="info-msg">No face enrolled. Please scan your face to enroll.</p>
+                        <button id="btn-login-enroll" class="primary-btn glass-btn">Enroll Face Now</button>
+                    </div>
+
+                    <div class="login-actions">
+                        <button id="btn-login-start" class="primary-btn glass-btn">Start Face Scan</button>
+                        <button id="btn-login-pin" class="secondary-btn glass-btn">Use PIN Instead</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Content: Hero Graphic -->
+            <div class="hero-graphic">
+                <div class="hologram-wrapper">
+                    <img src="assets/hero-hologram.png" alt="3D Hologram Chair" class="floating-hologram" />
+                    <!-- Floating UI Panels -->
+                    <div class="floating-panel p-top">
+                        <span class="icon">🎤</span> Create a chair
+                    </div>
+                    <div class="floating-panel p-mid">
+                        <span class="icon">🤏</span> Scale it up
+                    </div>
+                    <div class="floating-panel p-bottom">
+                        <span class="icon">✋</span> Move object
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App (Hidden until auth) -->
+    <div id="app" class="hidden">
+        <!-- Top Navigation -->
+        <header id="top-bar">
+            <div class="logo">Gesturecore <span>PRO</span></div>
+            <div id="save-ticker" class="hidden" style="color: #4ade80; font-weight: bold; margin-left: auto; margin-right: 20px;">Auto-Saved ✓</div>
+            <div class="top-actions">
+                <button id="btn-help" class="action-btn" title="View Commands & Gestures">Help ❓</button>
+                <button id="btn-reset" class="action-btn" title="Reset Scene">Reset</button>
+                <button id="btn-save" class="action-btn" title="Save to Memory">Save</button>
+                <button id="btn-load" class="action-btn" title="Load from Memory">Load</button>
+                <button id="lock-app-btn" class="action-btn" title="Lock App" style="margin-left: 20px; color: #ff4444; border-color: #ff4444;">Lock 🔒</button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main id="workspace">
+            <!-- Left Toolbar -->
+            <aside id="left-toolbar">
+                <div class="tool-group">
+                    <h4>Add Primitives</h4>
+                    <button id="btn-add-cube" class="tool-btn" title="Add Cube">Cube</button>
+                    <button id="btn-add-sphere" class="tool-btn" title="Add Sphere">Sphere</button>
+                    <button id="btn-add-cylinder" class="tool-btn" title="Add Cylinder">Cylinder</button>
+                    <button id="btn-add-plane" class="tool-btn" title="Add Plane">Plane</button>
+                    <button id="btn-add-cone" class="tool-btn" title="Add Cone">Cone</button>
+                    <button id="btn-add-torus" class="tool-btn" title="Add Torus">Torus</button>
+                    <button id="btn-add-capsule" class="tool-btn" title="Add Capsule">Capsule</button>
+                    <button id="btn-add-pyramid" class="tool-btn" title="Add Pyramid">Pyramid</button>
+                    <button id="btn-add-disc" class="tool-btn" title="Add Disc">Disc</button>
+                    <button id="btn-add-ring" class="tool-btn" title="Add Ring">Ring</button>
+                    <button id="btn-add-wedge" class="tool-btn" title="Add Wedge">Wedge</button>
+                </div>
+                <div class="tool-group">
+                    <h4>Editor Actions</h4>
+                    <button id="btn-duplicate" class="tool-btn" title="Duplicate Selection">Duplicate</button>
+                    <button id="btn-delete" class="tool-btn danger" title="Delete Selection (Del)">Delete</button>
+                    <button id="btn-center" class="tool-btn" title="Center Camera">Center Cam</button>
+                </div>
+                <div class="tool-group">
+                    <h4>Input Mode</h4>
+                    <button id="btn-toggle-gesture" class="tool-btn toggle-btn" title="Enable Webcam Tracking" disabled>Gesture Mode: Disabled until editor baseline is fixed</button>
+                    <button id="btn-toggle-voice" class="tool-btn toggle-btn" title="Enable Voice Commands">Voice Mode: OFF</button>
+                    <button id="btn-toggle-debug" class="tool-btn" title="Toggle Live Diagnostics">Show Debug Panel</button>
+                    <div id="webcam-container" class="hidden">
+                        <video id="webcam-video" autoplay playsinline></video>
+                        <canvas id="webcam-canvas"></canvas>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 3D Canvas Container -->
+            <section id="canvas-container">
+                <div id="gesture-cursor" class="hidden"></div>
+                <div id="gesture-badge" class="hidden"></div>
+                <div id="rotation-menu" class="hidden">
+                    <div class="menu-item">☝️ 1 Finger: Rotate X-Axis</div>
+                    <div class="menu-item">✌️ 2 Fingers: Rotate Y-Axis</div>
+                    <div class="menu-item">🖐️ 4 Fingers: Rotate Z-Axis</div>
+                </div>
+
+                <!-- Help Explainer Panel -->
+                <div id="help-panel" class="hidden">
+                    <div class="help-header">
+                        <h2>Gesturecore Commands & Gestures</h2>
+                        <button id="btn-close-help" class="action-btn">Close</button>
+                    </div>
+                    <div class="help-content">
+                        <div class="help-column">
+                            <h3>👋 Gestures</h3>
+                            <ul>
+                                <li><strong>Left Index+Middle (Fold Others):</strong> Reset Camera to Default View (hold 1.5s)</li>
+                                <li><strong>Both Fists:</strong> Duplicate Selected Object (hold 1.5s)</li>
+                                <li><strong>Both Index Fingers:</strong> Start Demo Mode (hold 1.5s)</li>
+                                <li><strong>Both Open Palms:</strong> Cycle Selection (hold 1.5s)</li>
+                                <li><strong>Both 2 Fingers (Peace):</strong> Lock Application (hold 1.5s)</li>
+                                <li><strong>Left Fist + Right Index:</strong> Trigger Voice Command (hold 0.4s)</li>
+                                <li><strong>Left 3 Fingers:</strong> Open Rotation Axis Menu</li>
+                            </ul>
+                        </div>
+                        <div class="help-column">
+                            <h3>🎙️ Voice Commands</h3>
+                            <ul>
+                                <li><strong>Creation:</strong> "Add cube", "Add 5 spheres", "Build a spaceship", "Load school"</li>
+                                <li><strong>Action:</strong> "Delete that", "Duplicate", "Make a copy", "Undo", "Redo"</li>
+                                <li><strong>Camera:</strong> "Reset camera", "Center cam", "Zoom in", "Zoom out"</li>
+                                <li><strong>Selection:</strong> "Select cube", "Deselect"</li>
+                                <li><strong>Transforms:</strong> "Move up", "Rotate left", "Scale up", "Move mode"</li>
+                                <li><strong>Colors:</strong> "Red", "Blue", "Green", "Yellow", "Gold", "Pink"</li>
+                                <li><strong>System:</strong> "Save scene", "Load scene", "Clear all", "Lock app"</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div id="gesture-badge" class="hidden"></div>
+                
+                <!-- Advanced Debug Panel -->
+                <div id="advanced-debug-panel" class="hidden">
+                    <h3>🔍 Live Diagnostics</h3>
+                    <div class="debug-section">
+                        <h4>Gesture Physics</h4>
+                        <div class="debug-row"><span>State:</span> <strong id="dbg-gesture-state">Idle</strong></div>
+                        <div class="debug-row"><span>Raw Gesture:</span> <strong id="dbg-gesture-raw">None</strong> <span id="dbg-gesture-score"></span></div>
+                        <div class="debug-row"><span>Handedness:</span> <strong id="dbg-handedness">Unknown</strong></div>
+                        <div class="debug-row"><span>Armed (Anchor):</span> <strong id="dbg-anchor-status">No</strong></div>
+                        <div class="debug-row"><span>Raw Delta:</span> <strong id="dbg-raw-delta">0.00, 0.00</strong></div>
+                        <div class="debug-row"><span>Smoothed Delta:</span> <strong id="dbg-smooth-delta">0.00, 0.00</strong></div>
+                        <div class="debug-row"><span>Object Delta:</span> <strong id="dbg-obj-delta">0.00, 0.00</strong></div>
+                    </div>
+                    <div class="debug-section">
+                        <h4>Voice Engine</h4>
+                        <div class="debug-row"><span>Raw Heard:</span> <strong id="dbg-voice-raw">-</strong></div>
+                        <div class="debug-row"><span>Normalized:</span> <strong id="dbg-voice-norm">-</strong></div>
+                        <div class="debug-row"><span>Matched Cmd:</span> <strong id="dbg-voice-cmd">-</strong></div>
+                        <div class="debug-row"><span>Result:</span> <strong id="dbg-voice-result">-</strong></div>
+                    </div>
+                    <div class="debug-section">
+                        <h4>System State</h4>
+                        <div class="debug-row"><span>Selection:</span> <strong id="dbg-sys-selection">None</strong></div>
+                        <div class="debug-row"><span>Camera Mode:</span> <strong id="dbg-sys-camera">Orbit</strong></div>
+                    </div>
+                </div>
+                
+                <!-- Construct Progress Overlay -->
+                <div id="construct-progress" class="hidden" style="position: absolute; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 15px 30px; border-radius: 8px; z-index: 100; border: 1px solid #4ade80;">
+                    <div class="construct-overlay-header" style="display: flex; align-items: center; gap: 15px;">
+                        <span class="construct-icon" style="font-size: 2em;">🏗️</span>
+                        <div class="construct-title-container">
+                            <h2 id="construct-name" style="margin: 0; font-size: 1.2em; color: #4ade80;">Building...</h2>
+                            <div id="construct-step" style="font-size: 0.9em; opacity: 0.8;">Part 0 of 0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Demo Mode Overlay -->
+                <div id="demo-overlay" class="hidden">
+                    <div class="demo-overlay-header">
+                        <span class="demo-icon">🏫</span>
+                        <div class="demo-title-container">
+                            <h2 id="demo-title">DEMO MODE RUNNING</h2>
+                            <div id="demo-step-text">Step 1 of 18</div>
+                        </div>
+                    </div>
+                    <div id="demo-status-text" class="demo-status-text">Preparing campus layout...</div>
+                    <button id="btn-stop-demo" class="demo-stop-btn">Stop Demo</button>
+                    <button id="btn-close-demo" class="demo-close-btn hidden">Close</button>
+                </div>
+                
+                <!-- Gesture Add Shape Menu -->
+                <div id="gesture-menu" class="hidden">
+                    <h2>Add Shape</h2>
+                    <ul>
+                        <li><span class="finger-icon">✌️</span> 2 Fingers &rarr; <strong>Cube</strong></li>
+                        <li><span class="finger-icon">🤟</span> 3 Fingers &rarr; <strong>Sphere</strong></li>
+                        <li><span class="finger-icon">🖖</span> 4 Fingers &rarr; <strong>Cylinder</strong></li>
+                        <li><span class="finger-icon">🖐️</span> Open Palm &rarr; <strong>Cancel</strong></li>
+                    </ul>
+                </div>
+
+                <!-- Rotation Axis Menu -->
+                <div id="rotation-menu" class="hidden">
+                    <h2>Select Rotation Axis</h2>
+                    <ul>
+                        <li><span class="finger-icon">☝️</span> 1 Finger &rarr; <strong>X-Axis</strong></li>
+                        <li><span class="finger-icon">✌️</span> 2 Fingers &rarr; <strong>Y-Axis</strong></li>
+                        <li><span class="finger-icon">🖖</span> 4 Fingers &rarr; <strong>Z-Axis</strong></li>
+                        <li><span class="finger-icon">🖐️</span> Open Palm &rarr; <strong>Cancel</strong></li>
+                    </ul>
+                </div>
+
+                <!-- Voice Command Panel -->
+                <div id="voice-panel" class="hidden">
+                    <h2>Voice Command Mode</h2>
+                    <div class="voice-stats">
+                        <div>Samples: <span id="voice-samples-count">0</span></div>
+                        <div>Speaker Score: <span id="voice-speaker-score">-</span></div>
+                        <div>Status: <span id="voice-status-text">OFF</span></div>
+                    </div>
+                    <div class="voice-transcript-box">
+                        <div id="voice-transcript-text" class="placeholder">Waiting for voice...</div>
+                    </div>
+                    <div id="voice-last-action" class="voice-last-action">Ready</div>
+                    
+                    <!-- Temporary Debug UI -->
+                    <div id="voice-debug-panel" class="voice-debug">
+                        <div class="debug-row">Rec State: <span id="debug-rec-state">Idle</span></div>
+                        <div class="debug-row">Error: <span id="debug-rec-error">None</span></div>
+                        <div class="debug-row">Cmd: <span id="debug-parsed-cmd">None</span></div>
+                    </div>
+                </div>
+
+                <!-- Live Voice Visualizer Panel -->
+                <div id="voice-visualizer-panel" class="voice-panel hidden" aria-live="polite">
+                    <div class="voice-panel-header">
+                        <span class="voice-mic-dot"></span>
+                        <span class="voice-panel-title">Voice Input</span>
+                    </div>
+
+                    <canvas id="voice-wave-canvas" width="220" height="64"></canvas>
+
+                    <div class="voice-panel-footer">
+                        <span id="voice-panel-status">Mic ready</span>
+                        <span id="voice-panel-level">0%</span>
+                    </div>
+                </div>
+
+                <!-- Three.js will inject canvas here -->
+            </section>
+
+            <!-- Right Properties Inspector -->
+            <aside id="right-inspector">
+                <h3>Properties</h3>
+                <div id="no-selection-msg">No object selected.</div>
+                
+                <div id="properties-panel" class="hidden">
+                    <div class="prop-group">
+                        <label for="prop-name">Name</label>
+                        <input type="text" id="prop-name" readonly>
+                    </div>
+                    
+                    <div class="prop-group">
+                        <label>Transform Mode</label>
+                        <div class="mode-toggles">
+                            <button id="mode-translate" class="mode-btn active" title="(G)">Translate</button>
+                            <button id="mode-rotate" class="mode-btn" title="(R)">Rotate</button>
+                            <button id="mode-scale" class="mode-btn" title="(S)">Scale</button>
+                        </div>
+                    </div>
+
+                    <div class="prop-group">
+                        <label>Position</label>
+                        <div class="vec3-inputs">
+                            <input type="number" id="pos-x" step="0.1" class="vec-input" title="X">
+                            <input type="number" id="pos-y" step="0.1" class="vec-input" title="Y">
+                            <input type="number" id="pos-z" step="0.1" class="vec-input" title="Z">
+                        </div>
+                    </div>
+
+                    <div class="prop-group">
+                        <label>Rotation (deg)</label>
+                        <div class="vec3-inputs">
+                            <input type="number" id="rot-x" step="1" class="vec-input" title="X">
+                            <input type="number" id="rot-y" step="1" class="vec-input" title="Y">
+                            <input type="number" id="rot-z" step="1" class="vec-input" title="Z">
+                        </div>
+                    </div>
+
+                    <div class="prop-group">
+                        <label>Scale</label>
+                        <div class="vec3-inputs">
+                            <input type="number" id="scale-x" step="0.1" class="vec-input" title="X">
+                            <input type="number" id="scale-y" step="0.1" class="vec-input" title="Y">
+                            <input type="number" id="scale-z" step="0.1" class="vec-input" title="Z">
+                        </div>
+                    </div>
+
+                    <div class="prop-group">
+                        <label for="prop-color">Color</label>
+                        <input type="color" id="prop-color">
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Bottom Status Strip -->
+        <footer id="status-bar">
+            <div class="status-item">Tracking: <span id="status-tracking" class="offline">Offline</span></div>
+            <div class="status-item">Gesture: <span id="status-gesture">None</span></div>
+            <div class="status-item">Mode: <span id="status-mode">Idle</span></div>
+            <div class="status-item">Hand: <span id="status-hand">Not Detected</span></div>
+            <div class="status-item">Voice: <span id="status-voice">Off</span></div>
+            <div class="status-item">Speaker: <span id="status-speaker">Missing Samples</span></div>
+            <div class="status-item">Transcript: <span id="status-transcript"></span></div>
+        </footer>
+    </div>
+    <script type="module" src="src/main.js?v=2"></script>
+    <script type="module" src="src/gesture.js?v=2"></script>
+    <script type="module" src="src/login.js?v=2"></script>
+    <script type="module" src="src/lock-screen.js?v=2"></script>
+    <script type="module" src="src/voice-mode.js?v=2"></script>
+</body>
+</html>
