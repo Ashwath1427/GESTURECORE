@@ -20,6 +20,9 @@ const addBlock = (registry, type, name, colorHex, w, h, d, px, py, pz) => {
         mesh.position.set(px, py + (h/2), pz);
     }
     
+    mesh.updateMatrixWorld(true);
+    if(mesh.material) mesh.material.needsUpdate = true;
+    
     return mesh;
 };
 

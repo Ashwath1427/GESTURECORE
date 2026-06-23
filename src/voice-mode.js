@@ -54,25 +54,11 @@ class VoiceMode {
                 return;
             }
 
-            // Explicitly request microphone permission and keep stream open
-            this.ui.setStatus('Requesting Mic...');
-            try {
-                this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                // Initialize and start visualizer
-                this.visualizer = new VoiceVisualizer(
-                    this.ui.visualizerCanvas,
-                    this.ui.visualizerStatus,
-                    this.ui.visualizerLevel,
-                    this.ui.visualizerMicDot
-                );
-                this.visualizer.start(this.micStream);
-            } catch (err) {
-                this.ui.setStatus('REJECTED');
-                this.ui.setLastAction('Microphone permission denied.', true);
-                this.ui.setVisualizerError('Permission denied');
-                return;
-            }
+            // We do NOT request getUserMedia here anymore, because on Windows,
+            // grabbing the mic stream for Web Audio API often causes the browser's 
+            // internal SpeechRecognition to abort immediately due to exclusive mode conflicts.
+            // This fixes the "aborted" infinite loop.
+            this.micStream = null;
 
             // Bypass blocking discoverEnrollmentSamples to fix 404 stalls
             this.enrolledProfile = null;
@@ -81,6 +67,10 @@ class VoiceMode {
             this.ui.setLastAction('Ready for commands');
             this.isActive = true;
             this.ui.statusSpeakerEl.textContent = 'Verification Disabled';
+
+            // Hide visualizer since we don't have micStream
+            const visPanel = document.querySelector('.voice-panel');
+            if (visPanel) visPanel.style.display = 'none';
 
             // Start recognition loop immediately
             this.handleActivation();
@@ -127,14 +117,8 @@ class VoiceMode {
         // 1. Mic / Recognizer Start
         this.recognizer.start();
 
-        // Start background audio capture for optional verification
+        // No live audio promise since we don't capture raw mic stream
         this.liveAudioPromise = null;
-        if (this.enrolledProfile) {
-            this.liveAudioPromise = recordCommandAudio(this.micStream, 2000).catch(err => {
-                console.warn('Failed to record live audio', err);
-                return null;
-            });
-        }
     }
 
     async handleTranscript({ text, confidence }) {

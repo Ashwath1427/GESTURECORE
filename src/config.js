@@ -7,11 +7,11 @@ export const AUTH_CONFIG = {
 };
 
 export const FACE_CONFIG = {
-    matchThreshold: 0.40, // Raised to 0.40 to accommodate real owner based on test data
+    matchThreshold: 0.55, // Raised to 0.55 to accommodate real owner based on test data
     minDetectionsBeforeAccept: 3, // Require 3 strictly consecutive stable detections
     stableFramesRequired: 3,
     debug: true, // Enable dev overlays
-    minDetectionScore: 0.35, // Dropped to 0.35 to prevent camera dropping valid frames
+    minDetectionScore: 0.25, // Dropped to 0.25 to prevent camera dropping valid frames
     minFaceBoxSize: 60, // Dropped to 60 to allow normal sitting distances
     autoTrimWeakReferences: true // Automatically exclude weak references based on live performance
 };

@@ -162,6 +162,10 @@ export class ObjectRegistry {
             (Math.random() - 0.5) * 2
         );
 
+        // force immediate matrix updates
+        mesh.updateMatrix();
+        mesh.updateMatrixWorld(true);
+
         this.scene.add(mesh);
         this.objects.push(mesh);
         this.saveState();
