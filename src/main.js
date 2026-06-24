@@ -140,20 +140,7 @@ function initMain() {
         });
     }
 
-    const helpBtn = document.getElementById('btn-help');
-    const helpPanel = document.getElementById('help-panel');
-    const closeHelpBtn = document.getElementById('btn-close-help');
-
-    if (helpBtn && helpPanel) {
-        helpBtn.addEventListener('click', () => {
-            helpPanel.classList.toggle('hidden');
-        });
-    }
-    if (closeHelpBtn && helpPanel) {
-        closeHelpBtn.addEventListener('click', () => {
-            helpPanel.classList.add('hidden');
-        });
-    }
+    // Help button logic moved to inline HTML onclick attributes for reliability
 
     const debugBtn = document.getElementById('btn-toggle-debug');
     const debugPanel = document.getElementById('advanced-debug-panel');
