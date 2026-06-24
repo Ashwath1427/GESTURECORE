@@ -6,6 +6,8 @@ export class ConstructRunner {
     }
 
     loadBlueprint(blueprintKey, app) {
+        if (!blueprintKey || typeof blueprintKey !== 'string') return;
+        blueprintKey = blueprintKey.trim();
         let bp = BLUEPRINTS[blueprintKey.toLowerCase()];
         if (!bp) {
             // Dynamic fallback for any random object requested
@@ -87,6 +89,8 @@ export class ConstructRunner {
             if (mesh.material) {
                 mesh.material.color.set(part.color);
             }
+            mesh.updateMatrix();
+            mesh.updateMatrixWorld(true);
         }
         return mesh;
     }

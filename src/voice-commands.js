@@ -241,6 +241,12 @@ export function executeVoiceCommand(cmd) {
                     app.transformSystem.selectObject(firstObj);
                     if (app.uiManager) app.uiManager.showToast(`Added ${count} ${cmd.shape}(s)`);
                 }
+                
+                if (count === 0) {
+                    if (app.uiManager) app.uiManager.showToast(`Unknown shape: ${cmd.shape}`);
+                    return false;
+                }
+                
                 success = true;
                 break;
             }

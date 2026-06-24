@@ -6,12 +6,14 @@ export class PersistenceManager {
     static saveTimeout = null;
 
     static shouldBypassLogin() {
-        return localStorage.getItem(this.SESSION_KEY) === 'true' &&
-               localStorage.getItem(this.SCENE_KEY) !== null;
+        const lastLogin = parseInt(localStorage.getItem(this.SESSION_KEY));
+        if (isNaN(lastLogin)) return false;
+        const isExpired = (Date.now() - lastLogin) > (1000 * 60 * 60); // 1 Hour expiry
+        return !isExpired && localStorage.getItem(this.SCENE_KEY) !== null;
     }
 
     static markSessionActive() {
-        localStorage.setItem(this.SESSION_KEY, 'true');
+        localStorage.setItem(this.SESSION_KEY, Date.now().toString());
     }
 
     static saveScene(sceneObjects) {

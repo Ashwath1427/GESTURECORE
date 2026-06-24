@@ -147,13 +147,14 @@ export class ObjectRegistry {
 
     createMesh(geometry, type) {
         this.counters[type]++;
-        const material = new THREE.MeshStandardMaterial({ 
+        const material = new THREE.MeshLambertMaterial({ 
             color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5) 
         });
         const mesh = new THREE.Mesh(geometry, material);
         mesh.name = `${type} ${this.counters[type]}`;
         mesh.userData.isSelectable = true;
         mesh.userData.type = type;
+        mesh.frustumCulled = false; // Bypass culling issues on older GPUs
 
         // collision-aware offset spawn (simple jitter so they don't stack perfectly)
         mesh.position.set(
