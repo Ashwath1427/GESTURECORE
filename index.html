@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gesturecore Editor</title>
+    <title>Shape Flow</title>
+    <link rel="icon" type="image/jpeg" href="assets/shape-flow-logo.jpg">
     <link rel="stylesheet" href="style.css">
-    <!-- Import map for Three.js -->
     <script type="importmap">
         {
             "imports": {
@@ -51,7 +51,10 @@
     <div id="login-overlay" class="premium-workspace-shell holomodel-landing">
         <!-- Top Nav -->
         <header class="workspace-header landing-header">
-            <div class="logo">Gesturecore <span>PRO</span></div>
+            <div class="brand-container">
+                <img src="assets/shape-flow-logo.jpg" alt="Shape Flow logo" class="brand-logo">
+                <div class="logo">Shape Flow <span>PRO</span></div>
+            </div>
 
             <div class="header-status">
                 <span class="status-pill">Secure Access Mode</span>
@@ -72,7 +75,8 @@
 
                 <div class="login-container premium-auth-card landing-auth-card">
                     <div class="login-header">
-                        <h2>Gesturecore Secure Access</h2>
+                        <img src="assets/shape-flow-logo.jpg" alt="Shape Flow logo" class="auth-logo">
+                        <h2>Shape Flow Access</h2>
                         <h3 id="login-greeting">Welcome, User</h3>
                     </div>
                     
@@ -133,7 +137,10 @@
     <div id="app" class="hidden">
         <!-- Top Navigation -->
         <header id="top-bar">
-            <div class="logo">Gesturecore <span>PRO</span></div>
+            <div class="brand-container">
+                <img src="assets/shape-flow-logo.jpg" alt="Shape Flow logo" class="brand-logo">
+                <div class="logo">Shape Flow <span>PRO</span></div>
+            </div>
             <div id="save-ticker" class="hidden" style="color: #4ade80; font-weight: bold; margin-left: auto; margin-right: 20px;">Auto-Saved ✓</div>
             <div class="top-actions">
                 <button id="btn-help" class="action-btn" title="View Commands & Gestures">Help ❓</button>
@@ -193,32 +200,54 @@
                 <!-- Help Explainer Panel -->
                 <div id="help-panel" class="hidden">
                     <div class="help-header">
-                        <h2>Gesturecore Commands & Gestures</h2>
+                        <h2>Shape Flow Commands & Gestures</h2>
                         <button id="btn-close-help" class="action-btn">Close</button>
                     </div>
                     <div class="help-content">
                         <div class="help-column">
-                            <h3>👋 Gestures</h3>
+                            <h3>👋 Two-Hand Gestures</h3>
                             <ul>
-                                <li><strong>Left Index+Middle (Fold Others):</strong> Reset Camera to Default View (hold 1.5s)</li>
-                                <li><strong>Both Fists:</strong> Duplicate Selected Object (hold 1.5s)</li>
-                                <li><strong>Both Index Fingers:</strong> Start Demo Mode (hold 1.5s)</li>
-                                <li><strong>Both Open Palms:</strong> Cycle Selection (hold 1.5s)</li>
-                                <li><strong>Both 2 Fingers (Peace):</strong> Lock Application (hold 1.5s)</li>
-                                <li><strong>Left Fist + Right Index:</strong> Trigger Voice Command (hold 0.4s)</li>
-                                <li><strong>Left 3 Fingers:</strong> Open Rotation Axis Menu</li>
+                                <li><strong>Both open palms:</strong> Select next object</li>
+                                <li><strong>Both fists:</strong> Duplicate object</li>
+                                <li><strong>Left fist + right index up:</strong> Start voice listening</li>
+                                <li><strong>Both hands peace sign:</strong> Lock app</li>
+                                <li><strong>Both index fingers up:</strong> Start demo mode</li>
+                                <li><strong>Left palm + right fist:</strong> Delete object</li>
+                                <li><strong>Left fist + right palm:</strong> Save scene</li>
+                            </ul>
+                            <h3 style="margin-top: 20px;">🔄 Rotation Controls</h3>
+                            <ul>
+                                <li><strong>Left 3 fingers up:</strong> Open rotation menu (1=X, 2=Y, 4=Z)</li>
+                                <li><strong>Right open palm:</strong> Move left/right to rotate</li>
+                                <li><strong>Right fist:</strong> Stop rotating</li>
+                            </ul>
+                        </div>
+                        <div class="help-column">
+                            <h3>☝️ One-Hand Gestures</h3>
+                            <ul>
+                                <li><strong>Open palm:</strong> Camera mode</li>
+                                <li><strong>Closed fist:</strong> Move object</li>
+                                <li><strong>Thumbs up:</strong> Make object bigger</li>
+                                <li><strong>Thumbs down:</strong> Make object smaller</li>
+                                <li><strong>Two fingers up:</strong> Zoom in</li>
+                                <li><strong>Three fingers up:</strong> Zoom out</li>
+                                <li><strong>Left index + middle up:</strong> Reset camera</li>
+                            </ul>
+                            <h3 style="margin-top: 20px;">💡 Easy Tips</h3>
+                            <ul>
+                                <li>Keep your hands steady & stay in good lighting.</li>
+                                <li>Make sure object is selected before moving/scaling.</li>
+                                <li>If it fails, lower your hand and try again slowly.</li>
                             </ul>
                         </div>
                         <div class="help-column">
                             <h3>🎙️ Voice Commands</h3>
                             <ul>
-                                <li><strong>Creation:</strong> "Add cube", "Add 5 spheres", "Build a spaceship", "Load school"</li>
-                                <li><strong>Action:</strong> "Delete that", "Duplicate", "Make a copy", "Undo", "Redo"</li>
-                                <li><strong>Camera:</strong> "Reset camera", "Center cam", "Zoom in", "Zoom out"</li>
-                                <li><strong>Selection:</strong> "Select cube", "Deselect"</li>
-                                <li><strong>Transforms:</strong> "Move up", "Rotate left", "Scale up", "Move mode"</li>
-                                <li><strong>Colors:</strong> "Red", "Blue", "Green", "Yellow", "Gold", "Pink"</li>
-                                <li><strong>System:</strong> "Save scene", "Load scene", "Clear all", "Lock app"</li>
+                                <li><strong>Create:</strong> "Add cube/sphere", "Build a spaceship", "Load school"</li>
+                                <li><strong>Select/Edit:</strong> "Select cube", "Delete that", "Duplicate", "Move up", "Scale down", "Rotate left"</li>
+                                <li><strong>Color:</strong> "Red", "Blue", "Green", "Gold", "White", "Black"</li>
+                                <li><strong>Camera:</strong> "Center cam", "Zoom in", "Reset camera"</li>
+                                <li><strong>App:</strong> "Save scene", "Clear scene", "Undo", "Start demo", "Lock app", "Stop listening"</li>
                             </ul>
                         </div>
                     </div>

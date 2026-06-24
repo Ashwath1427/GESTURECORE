@@ -1,11 +1,23 @@
 import * as THREE from 'three';
 
 export class PersistenceManager {
-    static SCENE_KEY = 'gesturecore_scene';
-    static SESSION_KEY = 'gesturecore_session_active';
+    static SCENE_KEY = 'shape_flow_scene';
+    static SESSION_KEY = 'shape_flow_session_active';
     static saveTimeout = null;
 
+    static _migrateLegacyKeys() {
+        const legacyScene = localStorage.getItem('gesturecore_scene');
+        if (legacyScene && !localStorage.getItem(this.SCENE_KEY)) {
+            localStorage.setItem(this.SCENE_KEY, legacyScene);
+        }
+        const legacySession = localStorage.getItem('gesturecore_session_active');
+        if (legacySession && !localStorage.getItem(this.SESSION_KEY)) {
+            localStorage.setItem(this.SESSION_KEY, legacySession);
+        }
+    }
+
     static shouldBypassLogin() {
+        this._migrateLegacyKeys();
         const lastLogin = parseInt(localStorage.getItem(this.SESSION_KEY));
         if (isNaN(lastLogin)) return false;
         const isExpired = (Date.now() - lastLogin) > (1000 * 60 * 60); // 1 Hour expiry

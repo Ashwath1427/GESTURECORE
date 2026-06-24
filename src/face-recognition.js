@@ -10,7 +10,14 @@ export class FaceRecognitionSystem {
         this.referenceStats = {};
         
         // Load from localStorage if available
-        const saved = localStorage.getItem('gesturecoreEnrolledFace');
+        let saved = localStorage.getItem('shapeFlowEnrolledFace');
+        if (!saved) {
+            saved = localStorage.getItem('gesturecoreEnrolledFace');
+            if (saved) {
+                localStorage.setItem('shapeFlowEnrolledFace', saved);
+            }
+        }
+
         if (saved) {
             this.enrolledDescriptors.push(new Float32Array(JSON.parse(saved)));
         }
@@ -194,7 +201,7 @@ export class FaceRecognitionSystem {
         const descriptor = await this.getDescriptorFromVideo();
         if (descriptor) {
             this.enrolledDescriptor = descriptor;
-            localStorage.setItem('gesturecoreEnrolledFace', JSON.stringify(Array.from(descriptor)));
+            localStorage.setItem('shapeFlowEnrolledFace', JSON.stringify(Array.from(descriptor)));
             this.ui.setAuthStatus('Face Enrolled', 'success');
             return true;
         } else {
