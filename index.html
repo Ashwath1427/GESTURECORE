@@ -252,6 +252,16 @@
                     <button id="btn-close-demo" class="demo-close-btn hidden">Close</button>
                 </div>
                 
+                <!-- Video Panel (Grid Card) -->
+                <div id="dps-video-panel" class="hidden video-panel-card">
+                    <div class="video-panel-header">
+                        <span class="video-icon">▶️</span>
+                        <h2 class="video-title">DPS Nadergul Video</h2>
+                        <button id="btn-close-video" class="close-btn" title="Close Video">✖</button>
+                    </div>
+                    <iframe id="dps-video-frame" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+                
                 <!-- Gesture Add Shape Menu -->
                 <div id="gesture-menu" class="hidden">
                     <h2>Add Shape</h2>
@@ -409,6 +419,7 @@
                 <h3>☝️ One-Hand Gestures</h3>
                 <ul>
                     <li><strong>Open palm:</strong> Camera mode</li>
+                    <li><strong>4 fingers up:</strong> Play video</li>
                     <li><strong>Closed fist:</strong> Move object</li>
                     <li><strong>Thumbs up:</strong> Make object bigger</li>
                     <li><strong>Thumbs down:</strong> Make object smaller</li>
@@ -442,6 +453,7 @@
             }
         });
     </script>
+
     <script type="module" src="src/main.js?v=2"></script>
     <script type="module" src="src/gesture.js?v=2"></script>
     <script type="module" src="src/login.js?v=2"></script>

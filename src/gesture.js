@@ -427,7 +427,7 @@ class GestureSystem {
         }
 
         // --- ROTATION STATE MACHINE OVERRIDES ---
-        if (leftHand && leftUpCount === 3 && this.state === GESTURE_STATES.IDLE) {
+        if (leftHand && !rightHand && leftUpCount === 3 && this.state === GESTURE_STATES.IDLE) {
             if (this.twoPalmsStartTime === 0) {
                 this.twoPalmsStartTime = now;
             } else if (now - this.twoPalmsStartTime > 300) {
@@ -651,15 +651,20 @@ class GestureSystem {
         if (results.handednesses && results.handednesses.length > 0) {
             singleHandLabel = results.handednesses[0][0].categoryName;
         }
+        // Because the webcam is mirrored, the user's actual LEFT hand is classified as 'Right' by MediaPipe.
+        const isUserLeftHand = singleHandLabel === 'Right';
+
+        const fingersUp = (indexUp?1:0) + (middleUp?1:0) + (ringUp?1:0) + (pinkyUp?1:0);
 
         if (isPinch) {
             detectedRaw = 'Pinch';
+        } else if (fingersUp === 4) {
+            detectedRaw = 'FOUR_FINGERS';
         } else if (customZoomRaw !== GESTURE_RAW.NONE) {
-            // Because the webcam is mirrored, the user's actual LEFT hand is classified as 'Right' by MediaPipe.
-            const isUserLeftHand = singleHandLabel === 'Right';
-            
             if (isUserLeftHand && customZoomRaw === GESTURE_RAW.ZOOM_IN_GESTURE) {
                 detectedRaw = 'LEFT_TWO_FINGERS';
+            } else if (!isUserLeftHand && customZoomRaw === GESTURE_RAW.FOUR_FINGERS) {
+                detectedRaw = GESTURE_RAW.FOUR_FINGERS;
             } else {
                 detectedRaw = customZoomRaw;
             }
@@ -694,7 +699,13 @@ class GestureSystem {
                 this.objectMovementArmed = false;
             }
         } else if (this.state !== GESTURE_STATES.MENU_MODE) {
-            if (smoothedRaw === 'LEFT_TWO_FINGERS' && timeHeld >= GESTURE.ZOOM_HOLD_MS) {
+            if (smoothedRaw === 'FOUR_FINGERS' && timeHeld >= 1000) {
+                if (now >= this.zoomCooldownUntil) {
+                    window.dispatchEvent(new Event('app-play-dps-video'));
+                    this.zoomCooldownUntil = now + 5000;
+                    this.showBadge('▶️ Video Triggered');
+                }
+            } else if (smoothedRaw === 'LEFT_TWO_FINGERS' && timeHeld >= GESTURE.ZOOM_HOLD_MS) {
                 if (now >= this.zoomCooldownUntil) {
                     window.dispatchEvent(new Event('app-center-cam-requested'));
                     this.zoomCooldownUntil = now + 700;
