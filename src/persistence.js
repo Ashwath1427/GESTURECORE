@@ -1,8 +1,12 @@
 import * as THREE from 'three';
 
 export class PersistenceManager {
-    static SCENE_KEY = 'shape_flow_scene';
-    static SESSION_KEY = 'shape_flow_session_active';
+    static get SCENE_KEY() {
+        return window.isGuestMode ? 'shape_flow_guest_scene' : 'shape_flow_scene';
+    }
+    static get SESSION_KEY() {
+        return window.isGuestMode ? 'shape_flow_guest_session_active' : 'shape_flow_session_active';
+    }
     static saveTimeout = null;
 
     static _migrateLegacyKeys() {

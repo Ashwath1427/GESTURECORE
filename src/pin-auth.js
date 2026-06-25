@@ -1,4 +1,4 @@
-import { AUTH_CONFIG } from './config.js';
+import { AUTH_CONFIG, GUEST_CONFIG } from './config.js';
 
 export class PinAuth {
     constructor(ui) {
@@ -41,6 +41,18 @@ export class PinAuth {
         if (inputPin === AUTH_CONFIG.pin) {
             this.ui.showPinError(null);
             this.ui.setAuthStatus('PIN Accepted', 'success');
+            window.isGuestMode = false;
+            if (this.resolveSuccess) {
+                this.resolveSuccess(true);
+            }
+        } else if (inputPin === GUEST_CONFIG.pin) {
+            this.ui.showPinError(null);
+            this.ui.setAuthStatus('Guest PIN Accepted', 'success');
+            window.isGuestMode = true;
+            
+            const greeting = document.getElementById('login-greeting');
+            if (greeting) greeting.textContent = `Welcome, ${GUEST_CONFIG.userName}`;
+            
             if (this.resolveSuccess) {
                 this.resolveSuccess(true);
             }

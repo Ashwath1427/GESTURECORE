@@ -627,14 +627,13 @@ class GestureSystem {
         const pinkyUp = lms[20].y < lms[18].y;
         const distThumbIndexBase = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
         
-        let thumbThreshold = 0.12;
-        if (this.candidateGesture === GESTURE_RAW.OPEN_PALM) {
-            thumbThreshold = 0.08; // easier to keep OPEN_PALM
-        } else if (this.candidateGesture === 'LEFT_FOUR_FINGERS' || this.candidateGesture === 'FOUR_FINGERS') {
-            thumbThreshold = 0.16; // easier to keep FOUR_FINGERS
-        }
+        // Fixed threshold — no hysteresis. 0.09 is the original stable value.
+        const thumbAway = distThumbIndexBase > 0.09;
         
-        const thumbAway = distThumbIndexBase > thumbThreshold;
+        // Strict thumb-tucked check: thumb tip must be close to palm AND below/at index base.
+        // This prevents Open Palm from ever being confused with Four Fingers.
+        const thumbTucked = !thumbAway && (lms[4].y >= lms[5].y - 0.02);
+        
         const isOpenPalm = indexUp && middleUp && ringUp && pinkyUp && thumbAway;
         
         const indexDown = lms[8].y > lms[6].y;
@@ -668,9 +667,9 @@ class GestureSystem {
             detectedRaw = 'Pinch';
         } else if (isOpenPalm) {
             detectedRaw = GESTURE_RAW.OPEN_PALM;
-        } else if (isUserLeftHand && fingersUp === 4 && !thumbAway) {
+        } else if (isUserLeftHand && fingersUp === 4 && thumbTucked) {
             detectedRaw = 'LEFT_FOUR_FINGERS';
-        } else if (!isUserLeftHand && fingersUp === 4 && !thumbAway) {
+        } else if (!isUserLeftHand && fingersUp === 4 && thumbTucked) {
             detectedRaw = 'FOUR_FINGERS';
         } else if (customZoomRaw !== GESTURE_RAW.NONE) {
             if (isUserLeftHand && customZoomRaw === GESTURE_RAW.ZOOM_IN_GESTURE) {
@@ -709,8 +708,14 @@ class GestureSystem {
                 this.state = GESTURE_STATES.IDLE;
                 this.objectMovementArmed = false;
             }
+        } else if (this.state === GESTURE_STATES.CAMERA_MODE) {
+            // MODE LOCK: Do not switch to other gestures (like playing video) while actively panning.
+            // Must release (drop hand or stop open palm) to exit camera mode.
+            if (smoothedRaw !== GESTURE_RAW.OPEN_PALM && timeHeld >= GESTURE_MOTION_CONFIG.releaseDelayMs) {
+                this.state = GESTURE_STATES.IDLE;
+            }
         } else if (this.state !== GESTURE_STATES.MENU_MODE) {
-            if (smoothedRaw === 'LEFT_FOUR_FINGERS' && timeHeld >= 1000) {
+            if (smoothedRaw === 'LEFT_FOUR_FINGERS' && timeHeld >= 1500) {
                 if (now >= this.zoomCooldownUntil) {
                     window.dispatchEvent(new Event('app-play-dps-video'));
                     this.zoomCooldownUntil = now + 5000;

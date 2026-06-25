@@ -11,6 +11,9 @@ export async function runLoginGate() {
     const faceRec = new FaceRecognitionSystem(ui);
     const pinAuth = new PinAuth(ui);
 
+    // Set global guest mode flag to false by default
+    window.isGuestMode = false;
+
     ui.setAuthStatus('Waiting', 'waiting');
 
     // 1. Try to start camera and load models

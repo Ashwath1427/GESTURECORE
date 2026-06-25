@@ -6,6 +6,12 @@ export const AUTH_CONFIG = {
     pinRetryDelayMs: 1000
 };
 
+export const GUEST_CONFIG = {
+    userName: 'Guest',
+    pin: '1234567',
+    pinRetryDelayMs: 1000
+};
+
 export const FACE_CONFIG = {
     matchThreshold: 0.55, // Raised to 0.55 to accommodate real owner based on test data
     minDetectionsBeforeAccept: 3, // Require 3 strictly consecutive stable detections

@@ -34,6 +34,14 @@ class App {
         
         // Force initial resize to ensure canvas has dimensions
         setTimeout(() => this.onWindowResize(), 100);
+
+        // Apply Guest Mode theme if authenticated as guest
+        if (window.isGuestMode) {
+            document.body.classList.add('guest-mode');
+            // Update logo text
+            const logoSpan = document.querySelector('#top-bar .logo span');
+            if (logoSpan) logoSpan.textContent = 'GUEST';
+        }
     }
 
     setupEvents() {
