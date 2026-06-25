@@ -626,7 +626,15 @@ class GestureSystem {
         const ringUp = lms[16].y < lms[14].y;
         const pinkyUp = lms[20].y < lms[18].y;
         const distThumbIndexBase = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
-        const thumbAway = distThumbIndexBase > 0.09;
+        
+        let thumbThreshold = 0.09;
+        if (this.candidateGesture === GESTURE_RAW.OPEN_PALM) {
+            thumbThreshold = 0.06; // easier to keep OPEN_PALM
+        } else if (this.candidateGesture === 'LEFT_FOUR_FINGERS' || this.candidateGesture === 'FOUR_FINGERS') {
+            thumbThreshold = 0.12; // easier to keep FOUR_FINGERS
+        }
+        
+        const thumbAway = distThumbIndexBase > thumbThreshold;
         const isOpenPalm = indexUp && middleUp && ringUp && pinkyUp && thumbAway;
         
         const indexDown = lms[8].y > lms[6].y;
@@ -658,7 +666,11 @@ class GestureSystem {
 
         if (isPinch) {
             detectedRaw = 'Pinch';
-        } else if (fingersUp === 4) {
+        } else if (isOpenPalm) {
+            detectedRaw = GESTURE_RAW.OPEN_PALM;
+        } else if (isUserLeftHand && fingersUp === 4 && !thumbAway) {
+            detectedRaw = 'LEFT_FOUR_FINGERS';
+        } else if (!isUserLeftHand && fingersUp === 4 && !thumbAway) {
             detectedRaw = 'FOUR_FINGERS';
         } else if (customZoomRaw !== GESTURE_RAW.NONE) {
             if (isUserLeftHand && customZoomRaw === GESTURE_RAW.ZOOM_IN_GESTURE) {
@@ -671,7 +683,6 @@ class GestureSystem {
         } else {
             if (isThumbsUp) detectedRaw = GESTURE_RAW.THUMBS_UP;
             else if (isThumbsDown) detectedRaw = GESTURE_RAW.THUMBS_DOWN;
-            else if (isOpenPalm) detectedRaw = GESTURE_RAW.OPEN_PALM;
             else if (isClosedFist) detectedRaw = GESTURE_RAW.CLOSED_FIST;
         }
         
@@ -699,7 +710,7 @@ class GestureSystem {
                 this.objectMovementArmed = false;
             }
         } else if (this.state !== GESTURE_STATES.MENU_MODE) {
-            if (smoothedRaw === 'FOUR_FINGERS' && timeHeld >= 1000) {
+            if (smoothedRaw === 'LEFT_FOUR_FINGERS' && timeHeld >= 1000) {
                 if (now >= this.zoomCooldownUntil) {
                     window.dispatchEvent(new Event('app-play-dps-video'));
                     this.zoomCooldownUntil = now + 5000;
