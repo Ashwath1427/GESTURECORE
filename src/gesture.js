@@ -627,11 +627,11 @@ class GestureSystem {
         const pinkyUp = lms[20].y < lms[18].y;
         const distThumbIndexBase = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
         
-        let thumbThreshold = 0.09;
+        let thumbThreshold = 0.12;
         if (this.candidateGesture === GESTURE_RAW.OPEN_PALM) {
-            thumbThreshold = 0.06; // easier to keep OPEN_PALM
+            thumbThreshold = 0.08; // easier to keep OPEN_PALM
         } else if (this.candidateGesture === 'LEFT_FOUR_FINGERS' || this.candidateGesture === 'FOUR_FINGERS') {
-            thumbThreshold = 0.12; // easier to keep FOUR_FINGERS
+            thumbThreshold = 0.16; // easier to keep FOUR_FINGERS
         }
         
         const thumbAway = distThumbIndexBase > thumbThreshold;
