@@ -230,29 +230,30 @@ class GestureSystem {
         const pinkyUp = lms[20].y < lms[18].y;
         
         const distThumbIndex = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
-        const thumbExtended = distThumbIndex > 0.14; // Increased from 0.09 to make 4-finger detection easier
+        const thumbExtended = distThumbIndex > 0.14; 
         
-        let upCount = 0;
-        if (indexUp) upCount++;
-        if (middleUp) upCount++;
-        if (ringUp) upCount++;
-        if (pinkyUp) upCount++;
+        // Robust 2-finger vs 3-finger logic.
+        // A peace sign (2 fingers) often lifts the ring finger slightly due to connected tendons.
+        // We measure if the ring finger is "significantly lower" than the middle finger tip.
+        const ringIsLowerThanMiddle = lms[16].y > (lms[12].y + 0.03); 
+        const isPeaceSign = indexUp && middleUp && ringIsLowerThanMiddle && !pinkyUp;
+        const isThreeFingers = indexUp && middleUp && ringUp && !ringIsLowerThanMiddle && !pinkyUp;
 
-        // Any 2 fingers extended
-        if (upCount === 2) {
+        if (isPeaceSign) {
             return GESTURE_RAW.ZOOM_IN_GESTURE;
         }
 
-        // Any 3 fingers extended
-        if (upCount === 3) {
+        if (isThreeFingers) {
             return GESTURE_RAW.ZOOM_OUT_GESTURE;
         }
 
-        // Menu Mode Gestures
-        if (upCount === 1) {
+        // Menu Mode Gestures (Index only)
+        if (indexUp && !middleUp && !ringUp && !pinkyUp) {
             return GESTURE_RAW.ONE_FINGER;
         }
-        if (upCount === 4 && !thumbExtended) {
+        
+        // 4 Fingers (all but thumb)
+        if (indexUp && middleUp && ringUp && pinkyUp && !thumbExtended) {
             return GESTURE_RAW.FOUR_FINGERS;
         }
 
@@ -665,15 +666,17 @@ class GestureSystem {
 
         if (isPinch) {
             detectedRaw = 'Pinch';
+        } else if (isUserLeftHand && fingersUp === 4) {
+            detectedRaw = 'LEFT_FOUR_FINGERS';
         } else if (isOpenPalm) {
             detectedRaw = GESTURE_RAW.OPEN_PALM;
-        } else if (isUserLeftHand && fingersUp === 4 && thumbTucked) {
-            detectedRaw = 'LEFT_FOUR_FINGERS';
         } else if (!isUserLeftHand && fingersUp === 4 && thumbTucked) {
             detectedRaw = 'FOUR_FINGERS';
         } else if (customZoomRaw !== GESTURE_RAW.NONE) {
             if (isUserLeftHand && customZoomRaw === GESTURE_RAW.ZOOM_IN_GESTURE) {
                 detectedRaw = 'LEFT_TWO_FINGERS';
+            } else if (isUserLeftHand && customZoomRaw === GESTURE_RAW.FOUR_FINGERS) {
+                detectedRaw = 'LEFT_FOUR_FINGERS';
             } else if (!isUserLeftHand && customZoomRaw === GESTURE_RAW.FOUR_FINGERS) {
                 detectedRaw = GESTURE_RAW.FOUR_FINGERS;
             } else {
@@ -704,7 +707,7 @@ class GestureSystem {
         if (this.state === GESTURE_STATES.OBJECT_MODE) {
             // MODE LOCK: Do not switch out unless explicitly released
             // We consider it released if hand is open palm, or no gesture for a short time
-            if (smoothedRaw === GESTURE_RAW.OPEN_PALM && timeHeld >= GESTURE_MOTION_CONFIG.releaseDelayMs) {
+            if ((smoothedRaw === GESTURE_RAW.OPEN_PALM || smoothedRaw === GESTURE_RAW.NONE) && timeHeld >= GESTURE_MOTION_CONFIG.releaseDelayMs) {
                 this.state = GESTURE_STATES.IDLE;
                 this.objectMovementArmed = false;
             }
@@ -714,7 +717,14 @@ class GestureSystem {
             if (smoothedRaw !== GESTURE_RAW.OPEN_PALM && timeHeld >= GESTURE_MOTION_CONFIG.releaseDelayMs) {
                 this.state = GESTURE_STATES.IDLE;
             }
-        } else if (this.state !== GESTURE_STATES.MENU_MODE) {
+        } else if (this.state === GESTURE_STATES.SCALE_UP_MODE || this.state === GESTURE_STATES.SCALE_DOWN_MODE) {
+            // MODE LOCK: Must release thumbs gesture
+            if (smoothedRaw !== GESTURE_RAW.THUMBS_UP && smoothedRaw !== GESTURE_RAW.THUMBS_DOWN && timeHeld >= GESTURE_MOTION_CONFIG.releaseDelayMs) {
+                this.state = GESTURE_STATES.IDLE;
+            }
+        } else if (this.state === GESTURE_STATES.ZOOM_IN_MODE || this.state === GESTURE_STATES.ZOOM_OUT_MODE) {
+            // Mode cancellation rules at the bottom will return to IDLE. Do nothing here.
+        } else if (this.state === GESTURE_STATES.IDLE) {
             if (smoothedRaw === 'LEFT_FOUR_FINGERS' && timeHeld >= 1500) {
                 if (now >= this.zoomCooldownUntil) {
                     window.dispatchEvent(new Event('app-play-dps-video'));
@@ -748,10 +758,15 @@ class GestureSystem {
             } else if (smoothedRaw === GESTURE_RAW.THUMBS_DOWN && timeHeld >= GESTURE.CLOSED_FIST_HOLD_MS) {
                 this.state = GESTURE_STATES.SCALE_DOWN_MODE;
             }
-        } else {
+        } else if (this.state === GESTURE_STATES.MENU_MODE) {
             // Inside MENU_MODE
             if (smoothedRaw === GESTURE_RAW.OPEN_PALM && timeHeld >= 250) {
                 // Cancel menu
+                this.state = GESTURE_STATES.IDLE;
+                document.getElementById('gesture-menu').classList.add('hidden');
+                this.candidateStartTime = now;
+            } else if (smoothedRaw === GESTURE_RAW.NONE && timeHeld >= 1000) {
+                // Auto-cancel menu if hand is dropped
                 this.state = GESTURE_STATES.IDLE;
                 document.getElementById('gesture-menu').classList.add('hidden');
                 this.candidateStartTime = now;
@@ -771,14 +786,18 @@ class GestureSystem {
             }
         }
 
-        // Mode cancellation rules
-        if (this.state === GESTURE_STATES.ZOOM_OUT_MODE && smoothedRaw !== GESTURE_RAW.ZOOM_OUT_GESTURE) {
-            this.state = GESTURE_STATES.IDLE;
-            this.zoomCooldownUntil = now + GESTURE.ZOOM_COOLDOWN_MS;
+        // Mode cancellation rules (with stability delay)
+        if (this.state === GESTURE_STATES.ZOOM_OUT_MODE) {
+            if (smoothedRaw !== GESTURE_RAW.ZOOM_OUT_GESTURE && timeHeld >= GESTURE_MOTION_CONFIG.releaseDelayMs) {
+                this.state = GESTURE_STATES.IDLE;
+                this.zoomCooldownUntil = now + GESTURE.ZOOM_COOLDOWN_MS;
+            }
         }
-        if (this.state === GESTURE_STATES.ZOOM_IN_MODE && smoothedRaw !== GESTURE_RAW.ZOOM_IN_GESTURE) {
-            this.state = GESTURE_STATES.IDLE;
-            this.zoomCooldownUntil = now + GESTURE.ZOOM_COOLDOWN_MS;
+        if (this.state === GESTURE_STATES.ZOOM_IN_MODE) {
+            if (smoothedRaw !== GESTURE_RAW.ZOOM_IN_GESTURE && timeHeld >= GESTURE_MOTION_CONFIG.releaseDelayMs) {
+                this.state = GESTURE_STATES.IDLE;
+                this.zoomCooldownUntil = now + GESTURE.ZOOM_COOLDOWN_MS;
+            }
         }
         
         // Reset motion history if gesture state just changed
@@ -863,10 +882,20 @@ class GestureSystem {
 
         if (this.prevWrist) {
             const rawDeltaX = wrist.x - this.prevWrist.x;
+            const rawDeltaY = wrist.y - this.prevWrist.y;
             this.lastRawDeltaX = rawDeltaX; // For debug
 
-            deltaX = rawDeltaX;
-            deltaY = wrist.y - this.prevWrist.y;
+            // Apply Exponential Moving Average (EMA) smoothing to camera deltas for flawless motion
+            if (this.smoothedDeltaX === undefined) this.smoothedDeltaX = rawDeltaX;
+            if (this.smoothedDeltaY === undefined) this.smoothedDeltaY = rawDeltaY;
+
+            // alpha 0.4 offers a good balance between responsiveness and buttery smoothness
+            const alpha = 0.4;
+            this.smoothedDeltaX = (alpha * rawDeltaX) + ((1 - alpha) * this.smoothedDeltaX);
+            this.smoothedDeltaY = (alpha * rawDeltaY) + ((1 - alpha) * this.smoothedDeltaY);
+
+            deltaX = this.smoothedDeltaX;
+            deltaY = this.smoothedDeltaY;
 
             if (MIRROR_X) {
                 deltaX = -deltaX;
@@ -875,8 +904,14 @@ class GestureSystem {
             this.lastCorrectedDeltaX = deltaX; // For debug
 
             // 5. Apply Dead Zone for Frame Deltas
-            if (Math.abs(deltaX) < GESTURE.DEAD_ZONE) deltaX = 0;
-            if (Math.abs(deltaY) < GESTURE.DEAD_ZONE) deltaY = 0;
+            if (Math.abs(deltaX) < GESTURE.DEAD_ZONE) {
+                deltaX = 0;
+                this.smoothedDeltaX *= 0.5; // Quick decay when returning to deadzone
+            }
+            if (Math.abs(deltaY) < GESTURE.DEAD_ZONE) {
+                deltaY = 0;
+                this.smoothedDeltaY *= 0.5; // Quick decay when returning to deadzone
+            }
         }
 
         // Clone the coordinates to avoid reference mutation during the next frame's EMA calculation!
@@ -903,8 +938,14 @@ class GestureSystem {
             anchorOffsetY = this.smoothedOffsetY;
             
             // Apply deadzone
-            if (Math.abs(anchorOffsetX) < GESTURE_MOTION_CONFIG.movementDeadzoneNormalized) anchorOffsetX = 0;
-            if (Math.abs(anchorOffsetY) < GESTURE_MOTION_CONFIG.movementDeadzoneNormalized) anchorOffsetY = 0;
+            if (Math.abs(anchorOffsetX) < GESTURE_MOTION_CONFIG.movementDeadzoneNormalized) {
+                anchorOffsetX = 0;
+                this.smoothedOffsetX *= 0.5; // Crisp stop
+            }
+            if (Math.abs(anchorOffsetY) < GESTURE_MOTION_CONFIG.movementDeadzoneNormalized) {
+                anchorOffsetY = 0;
+                this.smoothedOffsetY *= 0.5; // Crisp stop
+            }
             
             // We now have a clean, smoothed, deadzoned offset from the anchor.
         }
@@ -947,25 +988,23 @@ class GestureSystem {
         const camera = ts.camera;
         if (!orbitControls || !camera) return;
 
-        const ZOOM_FACTOR = 1.018;
+        const ZOOM_FACTOR = 1.025; // Slightly stronger for responsiveness
         const MIN_DIST = 2;
-        const MAX_DIST = 30;
+        const MAX_DIST = 50;
 
-        const offset = camera.position.clone().sub(orbitControls.target);
-        const currentDist = offset.length();
+        // Use Spherical to safely modify radius, respecting OrbitControls math
+        const offset = new THREE.Vector3().copy(camera.position).sub(orbitControls.target);
+        const spherical = new THREE.Spherical().setFromVector3(offset);
 
-        let newDist;
         if (direction === 'in') {
-            newDist = Math.max(MIN_DIST, currentDist / ZOOM_FACTOR);
+            spherical.radius = Math.max(MIN_DIST, spherical.radius / ZOOM_FACTOR);
         } else {
-            newDist = Math.min(MAX_DIST, currentDist * ZOOM_FACTOR);
+            spherical.radius = Math.min(MAX_DIST, spherical.radius * ZOOM_FACTOR);
         }
 
-        offset.setLength(newDist);
-        camera.position.copy(orbitControls.target.clone().add(offset));
+        offset.setFromSpherical(spherical);
+        camera.position.copy(orbitControls.target).add(offset);
         orbitControls.update();
-
-        console.log('[Zoom]', direction, 'dist:', newDist.toFixed(2));
     }
 
     applyCameraGestureDelta(deltaX, deltaY) {
