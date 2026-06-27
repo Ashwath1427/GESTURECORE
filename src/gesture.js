@@ -628,12 +628,9 @@ class GestureSystem {
         const pinkyUp = lms[20].y < lms[18].y;
         const distThumbIndexBase = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
         
-        // Fixed threshold — no hysteresis. 0.09 is the original stable value.
-        const thumbAway = distThumbIndexBase > 0.09;
-        
-        // Strict thumb-tucked check: thumb tip must be close to palm AND below/at index base.
-        // This prevents Open Palm from ever being confused with Four Fingers.
-        const thumbTucked = !thumbAway && (lms[4].y >= lms[5].y - 0.02);
+        // Binary split: > 0.12 is Open Palm, <= 0.12 is Four Fingers (Tucked)
+        const thumbAway = distThumbIndexBase > 0.12;
+        const thumbTucked = !thumbAway;
         
         const isOpenPalm = indexUp && middleUp && ringUp && pinkyUp && thumbAway;
         
@@ -666,10 +663,10 @@ class GestureSystem {
 
         if (isPinch) {
             detectedRaw = 'Pinch';
-        } else if (isUserLeftHand && fingersUp === 4) {
-            detectedRaw = 'LEFT_FOUR_FINGERS';
         } else if (isOpenPalm) {
             detectedRaw = GESTURE_RAW.OPEN_PALM;
+        } else if (isUserLeftHand && fingersUp === 4 && thumbTucked) {
+            detectedRaw = 'LEFT_FOUR_FINGERS';
         } else if (!isUserLeftHand && fingersUp === 4 && thumbTucked) {
             detectedRaw = 'FOUR_FINGERS';
         } else if (customZoomRaw !== GESTURE_RAW.NONE) {
@@ -774,7 +771,7 @@ class GestureSystem {
                 let shapeToSpawn = null;
                 if (smoothedRaw === GESTURE_RAW.ZOOM_IN_GESTURE || smoothedRaw === 'LEFT_TWO_FINGERS') shapeToSpawn = 'cube';      // 2 fingers
                 if (smoothedRaw === GESTURE_RAW.ZOOM_OUT_GESTURE) shapeToSpawn = 'sphere';   // 3 fingers
-                if (smoothedRaw === GESTURE_RAW.FOUR_FINGERS) shapeToSpawn = 'cylinder';     // 4 fingers
+                if (smoothedRaw === GESTURE_RAW.FOUR_FINGERS || smoothedRaw === 'LEFT_FOUR_FINGERS') shapeToSpawn = 'cylinder';     // 4 fingers
 
                 if (shapeToSpawn) {
                     window.dispatchEvent(new CustomEvent('gesture-add-shape', { detail: { type: shapeToSpawn } }));
