@@ -137,8 +137,19 @@ class GestureSystem {
     }
 
     startDetectionLoop() {
+        window.lastMouseActivity = 0;
+        window.addEventListener('mousemove', () => {
+            window.lastMouseActivity = performance.now();
+        });
+
         const loop = () => {
             if (!this.webcamRunning) return;
+            
+            // If the user is actively using the mouse, pause gesture tracking to prevent interference
+            if (performance.now() - window.lastMouseActivity < 1000) {
+                this.animationFrameId = requestAnimationFrame(loop);
+                return;
+            }
             
             if (this.video.readyState >= 2 && this.handLandmarker) {
                 let startTimeMs = performance.now();
@@ -159,9 +170,10 @@ class GestureSystem {
         const middleUp = lms[12].y < lms[10].y;
         const ringUp = lms[16].y < lms[14].y;
         const pinkyUp = lms[20].y < lms[18].y;
+        const palmWidthForThumb = Math.hypot(lms[0].x - lms[5].x, lms[0].y - lms[5].y, lms[0].z - lms[5].z);
         const distThumbIndex = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
-        const thumbAway = distThumbIndex > 0.09;
-        return indexUp && middleUp && ringUp && pinkyUp;
+        const thumbAway = distThumbIndex > (palmWidthForThumb * 0.6);
+        return indexUp && middleUp && ringUp && pinkyUp && thumbAway;
     }
 
     isHandClosedFist(lms) {
@@ -170,8 +182,9 @@ class GestureSystem {
         const middleDown = lms[12].y > lms[10].y;
         const ringDown = lms[16].y > lms[14].y;
         const pinkyDown = lms[20].y > lms[18].y;
+        const palmWidthForThumb = Math.hypot(lms[0].x - lms[5].x, lms[0].y - lms[5].y, lms[0].z - lms[5].z);
         const distThumbIndexBase = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
-        const thumbAway = distThumbIndexBase > 0.09;
+        const thumbAway = distThumbIndexBase > (palmWidthForThumb * 0.6);
         return indexDown && middleDown && ringDown && pinkyDown && !thumbAway;
     }
 
@@ -229,8 +242,9 @@ class GestureSystem {
         const ringUp = lms[16].y < lms[14].y;
         const pinkyUp = lms[20].y < lms[18].y;
         
+        const palmWidthForThumb = Math.hypot(lms[0].x - lms[5].x, lms[0].y - lms[5].y, lms[0].z - lms[5].z);
         const distThumbIndex = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
-        const thumbExtended = distThumbIndex > 0.14; 
+        const thumbExtended = distThumbIndex > (palmWidthForThumb * 0.6); 
         
         // Robust 2-finger vs 3-finger logic.
         // A peace sign (2 fingers) often lifts the ring finger slightly due to connected tendons.
@@ -626,10 +640,11 @@ class GestureSystem {
         const middleUp = lms[12].y < lms[10].y;
         const ringUp = lms[16].y < lms[14].y;
         const pinkyUp = lms[20].y < lms[18].y;
+        const palmWidthForThumb = Math.hypot(lms[0].x - lms[5].x, lms[0].y - lms[5].y, lms[0].z - lms[5].z);
         const distThumbIndexBase = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
         
-        // Binary split: > 0.12 is Open Palm, <= 0.12 is Four Fingers (Tucked)
-        const thumbAway = distThumbIndexBase > 0.12;
+        // Binary split: > 0.6 * palmWidth is Open Palm, <= 0.6 is Four Fingers (Tucked)
+        const thumbAway = distThumbIndexBase > (palmWidthForThumb * 0.6);
         const thumbTucked = !thumbAway;
         
         const isOpenPalm = indexUp && middleUp && ringUp && pinkyUp && thumbAway;

@@ -1,3 +1,8 @@
+import * as THREE from 'three';
+import { parseDesignVoiceCommand } from './design-voice.js';
+import { createGLKHouse, createRocket, create2BHKHouse, createVilla, createModernHouse, createTraditionalHouse, addGardenToHouse, addPoolToHouse, addFenceToHouse, addDrivewayToHouse, addGarageToHouse } from './house-templates.js';
+import { applyColorToHousePart } from './style-presets.js';
+
 function normalizeTranscript(raw) {
     return raw
         .toLowerCase()
@@ -42,6 +47,16 @@ export function parseVoiceCommand(rawText) {
     const elNorm = document.getElementById('dbg-voice-norm');
     if (elNorm) elNorm.textContent = text;
 
+    // ── Design Mode Interception ─────────────────────────────
+    // If design mode is active, try the design parser first.
+    // Only fall through to normal commands if design parser returns UNKNOWN.
+    if (window.app && window.app.designMode && window.app.designMode.active) {
+        const designCmd = parseDesignVoiceCommand(rawText);
+        if (designCmd.type !== 'UNKNOWN') {
+            return designCmd;
+        }
+    }
+
     
     // Smart Selection
     const selectMatch = text.match(/(?:select|choose|pick|focus)\s+(.+)/);
@@ -63,6 +78,39 @@ export function parseVoiceCommand(rawText) {
             if (shape.endsWith('s') && shape !== 'torus') shape = shape.slice(0, -1);
             return { type: 'ADD_MULTIPLE', qty: addCmd.qty, shape: shape };
         }
+    }
+    
+    // House Builder Context
+    if (text.match(/(?:build|make|create)\s+(?:a\s+)?house/) || text.includes('simple house')) {
+        return { type: 'BUILD_HOUSE_TEMPLATE', template: 'glk-house' };
+    }
+    if (text.match(/(?:build|make|create)\s+(?:a\s+)?(?:rocket|rocker|trug)/)) {
+        return { type: 'BUILD_ROCKET' };
+    }
+    if (text.includes('villa')) {
+        return { type: 'BUILD_HOUSE_TEMPLATE', template: 'villa' };
+    }
+    if (text.includes('modern house')) {
+        return { type: 'BUILD_HOUSE_TEMPLATE', template: 'modern' };
+    }
+    if (text.includes('traditional house')) {
+        return { type: 'BUILD_HOUSE_TEMPLATE', template: 'traditional' };
+    }
+    if (text.includes('2bhk') || text.includes('two bhk')) {
+        return { type: 'BUILD_HOUSE_TEMPLATE', template: '2bhk' };
+    }
+
+    // Contextual House Actions
+    if (text.includes('add garden') || text.includes('add a garden')) return { type: 'HOUSE_ACTION', action: 'garden' };
+    if (text.includes('add pool') || text.includes('add a pool')) return { type: 'HOUSE_ACTION', action: 'pool' };
+    if (text.includes('add fence') || text.includes('add a fence')) return { type: 'HOUSE_ACTION', action: 'fence' };
+    if (text.includes('add driveway') || text.includes('add a driveway')) return { type: 'HOUSE_ACTION', action: 'driveway' };
+    if (text.includes('add garage') || text.includes('add a garage')) return { type: 'HOUSE_ACTION', action: 'garage' };
+
+    // Contextual House Paint
+    const paintMatch = text.match(/paint\s+(roof|walls?|door|window)\s+(red|blue|green|yellow|orange|purple|pink|white|black|gold|cyan|brown|grey|gray)/);
+    if (paintMatch) {
+        return { type: 'HOUSE_PAINT', part: paintMatch[1], color: paintMatch[2] };
     }
     
     // Constructs & Dynamic Fallbacks
@@ -184,6 +232,16 @@ export function executeVoiceCommand(cmd) {
     try {
         console.log(`[VoiceCmd] Executing: ${cmd.type}`, cmd);
         
+        // ── Design Mode Commands ─────────────────────────────
+        // If the command type starts with DESIGN_, delegate to design mode
+        if (cmd.type.startsWith('DESIGN_') && app.designMode && app.designMode.active) {
+            const handled = app.designMode.executeDesignCommand(cmd);
+            if (handled) {
+                if (elResult) elResult.textContent = `Design: ${cmd.type}`;
+                return true;
+            }
+        }
+
         let success = false;
         switch (cmd.type) {
             case 'START_DEMO_MODE': {
@@ -256,6 +314,81 @@ export function executeVoiceCommand(cmd) {
                 success = true;
                 break;
             }
+            case 'BUILD_HOUSE_TEMPLATE': {
+                let houseGroup = null;
+                switch (cmd.template) {
+                    case 'simple': houseGroup = createGLKHouse(THREE); break;
+                    case 'glk-house': houseGroup = createGLKHouse(THREE); break;
+                    case '2bhk': houseGroup = create2BHKHouse(THREE); break;
+                    case 'villa': houseGroup = createVilla(THREE); break;
+                    case 'modern': houseGroup = createModernHouse(THREE); break;
+                    case 'traditional': houseGroup = createTraditionalHouse(THREE); break;
+                }
+                if (houseGroup) {
+                    app.objectRegistry.addObject(houseGroup);
+                    app.transformSystem.selectObject(houseGroup);
+                    if (app.uiManager) app.uiManager.showToast(`Built a ${cmd.template} house!`);
+                    success = true;
+                }
+                break;
+            }
+            case 'BUILD_ROCKET': {
+                const rocketGroup = createRocket(THREE);
+                if (rocketGroup) {
+                    app.objectRegistry.addObject(rocketGroup);
+                    app.transformSystem.selectObject(rocketGroup);
+                    if (app.uiManager) app.uiManager.showToast(`Built a Rocket!`);
+                    success = true;
+                }
+                break;
+            }
+            case 'HOUSE_ACTION': {
+                const target = app.transformSystem.selectedObject;
+                if (target && target.userData && target.userData.isHouse) {
+                    if (cmd.action === 'garden') addGardenToHouse(target);
+                    else if (cmd.action === 'pool') addPoolToHouse(target);
+                    else if (cmd.action === 'fence') addFenceToHouse(target);
+                    else if (cmd.action === 'driveway') addDrivewayToHouse(target);
+                    else if (cmd.action === 'garage') addGarageToHouse(target);
+                    if (app.uiManager) {
+                        app.uiManager.showToast(`Added ${cmd.action} to house`);
+                        if (app.uiManager.renderAiSuggestions) app.uiManager.renderAiSuggestions(target);
+                    }
+                    success = true;
+                } else {
+                    if (app.uiManager) app.uiManager.showToast('Select a house to add this to.');
+                }
+                break;
+            }
+            case 'HOUSE_PAINT': {
+                const target = app.transformSystem.selectedObject;
+                if (target && target.userData && target.userData.isHouse) {
+                    let hexColor = cmd.color;
+                    // Simple map for basic named colors to hex, could expand
+                    const colorMap = {
+                        red: '#ff4d4d', blue: '#4d79ff', green: '#4dff4d', yellow: '#ffff4d',
+                        orange: '#ff9933', purple: '#b34dff', pink: '#ff69b4', white: '#ffffff',
+                        black: '#1a1a1a', gold: '#ffd700', cyan: '#00ffff', brown: '#8b4513',
+                        grey: '#808080', gray: '#808080'
+                    };
+                    if (colorMap[cmd.color]) hexColor = colorMap[cmd.color];
+
+                    // Map 'walls' to 'Walls', 'roof' to 'Roof', etc.
+                    let partName = cmd.part.charAt(0).toUpperCase() + cmd.part.slice(1);
+                    if (partName === 'Walls') partName = 'Walls'; 
+                    else if (partName === 'Wall') partName = 'Walls'; // Fix singular
+                    
+                    applyColorToHousePart(target, partName, hexColor);
+                    if (app.uiManager) {
+                        app.uiManager.showToast(`Painted ${partName} ${cmd.color}`);
+                        if (app.uiManager.renderAiSuggestions) app.uiManager.renderAiSuggestions(target);
+                    }
+                    success = true;
+                } else {
+                    if (app.uiManager) app.uiManager.showToast('Select a house to paint.');
+                }
+                break;
+            }
             case 'CONSTRUCT_BLUEPRINT': {
                 if (window.constructRunner) {
                     window.constructRunner.loadBlueprint(cmd.blueprint, app);
@@ -320,7 +453,7 @@ export function executeVoiceCommand(cmd) {
                 const ctrl = app.sceneManager.controls;
                 if (cam && ctrl) {
                     const offset = cam.position.clone().sub(ctrl.target);
-                    offset.setLength(Math.min(30, offset.length() * 1.3));
+                    offset.setLength(Math.min(150, offset.length() * 1.5));
                     cam.position.copy(ctrl.target.clone().add(offset));
                     ctrl.update();
                     if (app.uiManager) app.uiManager.showToast('Zoomed out');

@@ -4,6 +4,9 @@ export class PersistenceManager {
     static get SCENE_KEY() {
         return window.isGuestMode ? 'shape_flow_guest_scene' : 'shape_flow_scene';
     }
+    static get MANUAL_SCENE_KEY() {
+        return window.isGuestMode ? 'shape_flow_guest_manual' : 'shape_flow_manual';
+    }
     static get SESSION_KEY() {
         return window.isGuestMode ? 'shape_flow_guest_session_active' : 'shape_flow_session_active';
     }
@@ -32,7 +35,7 @@ export class PersistenceManager {
         localStorage.setItem(this.SESSION_KEY, Date.now().toString());
     }
 
-    static saveScene(sceneObjects) {
+    static saveScene(sceneObjects, isManual = false) {
         if (!sceneObjects) return;
         
         const data = {
@@ -49,8 +52,9 @@ export class PersistenceManager {
                 visible: obj.visible
             }))
         };
-        localStorage.setItem(this.SCENE_KEY, JSON.stringify(data));
-        if (window.app && window.app.uiManager) {
+        const key = isManual ? this.MANUAL_SCENE_KEY : this.SCENE_KEY;
+        localStorage.setItem(key, JSON.stringify(data));
+        if (window.app && window.app.uiManager && !isManual) {
             window.app.uiManager.showToast('Auto-Saved ✓');
         }
     }
@@ -64,8 +68,9 @@ export class PersistenceManager {
         }, 2000);
     }
 
-    static restoreScene(app) {
-        const raw = localStorage.getItem(this.SCENE_KEY);
+    static restoreScene(app, isManual = false) {
+        const key = isManual ? this.MANUAL_SCENE_KEY : this.SCENE_KEY;
+        const raw = localStorage.getItem(key);
         if (!raw) return false;
         
         try {

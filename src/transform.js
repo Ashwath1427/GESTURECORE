@@ -18,6 +18,21 @@ export class TransformSystem {
 
         // Transform Controls
         this.transformControl = new TransformControls(this.camera, this.domElement);
+        // Hide the bulky central XY/YZ/XZ translation planes
+        this.transformControl.showXY = false;
+        this.transformControl.showYZ = false;
+        this.transformControl.showXZ = false;
+        
+        // Hide the infinite axis lines that appear when hovering/dragging
+        // TransformControls uses THREE.Line for these long constraint axes
+        this.transformControl.traverse((child) => {
+            if (child.isLine || child.isLineSegments) {
+                if (child.material) {
+                    child.material.visible = false;
+                }
+            }
+        });
+        
         this.transformControl.addEventListener('dragging-changed', (event) => {
             this.orbitControls.enabled = !event.value;
             this.isTransformDragging = event.value;
@@ -49,17 +64,41 @@ export class TransformSystem {
             this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
             this.raycaster.setFromCamera(this.mouse, this.camera);
-            const intersects = this.raycaster.intersectObjects(this.scene.children, false);
+            const intersects = this.raycaster.intersectObjects(this.scene.children, true);
 
             let found = null;
             for (let i = 0; i < intersects.length; i++) {
-                if (intersects[i].object.userData.isSelectable) {
-                    found = intersects[i].object;
-                    break;
+                let obj = intersects[i].object;
+                while (obj && obj !== this.scene) {
+                    if (obj.userData.isSelectable) {
+                        found = obj;
+                        break;
+                    }
+                    obj = obj.parent;
                 }
+                if (found) break;
             }
             
             this.selectObject(found);
+        });
+        
+        window.addEventListener('app-scene-updated', () => {
+            if (this.selectedObject) {
+                // Re-attach to force bounding box update after async load
+                const obj = this.selectedObject;
+                this.transformControl.detach();
+                this.transformControl.attach(obj);
+            }
+        });
+
+        window.addEventListener('app-object-removing', (e) => {
+            if (this.selectedObject === e.detail.object || (this.selectedObject && this.selectedObject.parent === e.detail.object)) {
+                this.selectObject(null);
+            }
+        });
+
+        window.addEventListener('app-scene-clearing', () => {
+            this.selectObject(null);
         });
     }
 
@@ -112,15 +151,15 @@ export class TransformSystem {
         this.mouse.x = x;
         this.mouse.y = y;
         this.raycaster.setFromCamera(this.mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects(this.scene.children, false);
+        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
         for (let i = 0; i < intersects.length; i++) {
-            if (intersects[i].object.userData.isSelectable || intersects[i].object.parent === this.transformControl) {
-                // If clicking gizmo, return the gizmo intersection ideally, 
-                // but transformControls handles its own raycasting for interaction.
-                // We'll just return selectable objects for hover/selection via gesture.
-                if (intersects[i].object.userData.isSelectable) {
-                     return intersects[i].object;
+            let obj = intersects[i].object;
+            while (obj && obj !== this.scene) {
+                if (obj.userData.isSelectable) {
+                    return obj;
                 }
+                if (obj === this.transformControl) break;
+                obj = obj.parent;
             }
         }
         return null;

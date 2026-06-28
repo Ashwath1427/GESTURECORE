@@ -140,6 +140,10 @@
             <div class="brand-container">
                 <img src="assets/shape-flow-logo.jpg" alt="Shape Flow logo" class="brand-logo">
                 <div class="logo">Shape Flow <span>PRO</span></div>
+                <div class="history-actions" style="margin-left: 20px; display: flex; gap: 8px;">
+                    <button id="btn-undo" class="action-btn" title="Undo (Ctrl+Z)" style="padding: 4px 10px; font-size: 13px;">⮪ Undo</button>
+                    <button id="btn-redo" class="action-btn" title="Redo (Ctrl+Y)" style="padding: 4px 10px; font-size: 13px;">⮫ Redo</button>
+                </div>
             </div>
             <div id="save-ticker" class="hidden" style="color: #4ade80; font-weight: bold; margin-left: auto; margin-right: 20px;">Auto-Saved ✓</div>
             <div class="top-actions">
@@ -375,6 +379,18 @@
                         <input type="color" id="prop-color">
                     </div>
                 </div>
+                
+                <!-- Suggestions Panel (Only visible when a house is selected) -->
+                <div id="ai-suggestions-panel" class="hidden">
+                    <h3>Suggestions for <span id="suggestions-target-name">House</span></h3>
+                    <div id="suggestions-list" class="suggestions-list">
+                        <!-- Filled dynamically by ai-suggestions.js -->
+                    </div>
+                    <div class="suggestions-controls" style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button id="btn-refresh-suggestions" class="action-btn" style="flex: 1;">Refresh</button>
+                        <button id="btn-close-suggestions" class="action-btn" style="flex: 1;">Close</button>
+                    </div>
+                </div>
             </aside>
         </main>
 
@@ -459,5 +475,6 @@
     <script type="module" src="src/login.js?v=2"></script>
     <script type="module" src="src/lock-screen.js?v=2"></script>
     <script type="module" src="src/voice-mode.js?v=2"></script>
+    <!-- Deprecated: <script type="module" src="src/design-mode-house.js?v=2"></script> -->
 </body>
 </html>

@@ -32,7 +32,8 @@ export function createSpeechRecognizer({ onTranscript, onError, onEnd, onStateCh
         console.log(`[VoiceDebug] transcript: "${text}"`, event);
         onTranscript({
             text: text,
-            confidence: result[0].confidence ?? 0
+            confidence: result[0].confidence ?? 0,
+            isFinal: result.isFinal
         });
     };
 

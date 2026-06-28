@@ -1,5 +1,7 @@
 import { AppState } from './app-state.js';
 import * as THREE from 'three';
+import { generateSuggestions } from './ai-suggestions.js';
+import { PersistenceManager } from './persistence.js';
 
 export class UIManager {
     constructor(objectRegistry, transformSystem, sceneManager) {
@@ -14,6 +16,28 @@ export class UIManager {
         this.noSelectionMsg = document.getElementById('no-selection-msg');
         this.propName = document.getElementById('prop-name');
         this.propColor = document.getElementById('prop-color');
+        
+        // AI Suggestions DOM elements
+        this.suggestionsPanel = document.getElementById('ai-suggestions-panel');
+        this.suggestionsList = document.getElementById('suggestions-list');
+        this.suggestionsTargetName = document.getElementById('suggestions-target-name');
+        
+        const btnRefreshSuggestions = document.getElementById('btn-refresh-suggestions');
+        if (btnRefreshSuggestions) {
+            btnRefreshSuggestions.addEventListener('click', () => {
+                if (this.transform.selectedObject && this.transform.selectedObject.userData.isHouse) {
+                    this.renderAiSuggestions(this.transform.selectedObject);
+                }
+            });
+        }
+        
+        const btnCloseSuggestions = document.getElementById('btn-close-suggestions');
+        if (btnCloseSuggestions) {
+            btnCloseSuggestions.addEventListener('click', () => {
+                this.suggestionsPanel.classList.add('hidden');
+                this.panel.classList.remove('hidden');
+            });
+        }
         
         this.posInputs = {
             x: document.getElementById('pos-x'),
@@ -117,25 +141,42 @@ export class UIManager {
         };
         
         // Top bar actions
-        let memoryStore = null;
         const saveAction = () => {
-            memoryStore = this.registry.serialize();
-            alert('Scene saved to memory!');
+            PersistenceManager.saveScene(this.registry.objects, true);
+            this.showToast('Scene saved manually!');
         };
         document.getElementById('btn-save').onclick = saveAction;
         window.addEventListener('app-save-requested', saveAction);
+        
         document.getElementById('btn-load').onclick = () => {
-            if(memoryStore) {
-                this.registry.deserialize(memoryStore);
+            if (PersistenceManager.restoreScene(window.app, true)) {
                 this.transform.selectObject(null);
+                this.showToast('Scene loaded!');
             } else {
-                alert('No scene in memory to load.');
+                this.showToast('No saved scene found.');
             }
         };
         document.getElementById('btn-reset').onclick = () => {
             this.registry.clearScene();
             this.transform.selectObject(null);
+            if (window.app && window.app.designMode) {
+                window.app.designMode.clearDesignScene();
+            }
         };
+        
+        const btnUndo = document.getElementById('btn-undo');
+        if (btnUndo) {
+            btnUndo.onclick = () => {
+                if (this.registry) this.registry.undo();
+            };
+        }
+        
+        const btnRedo = document.getElementById('btn-redo');
+        if (btnRedo) {
+            btnRedo.onclick = () => {
+                if (this.registry) this.registry.redo();
+            };
+        }
 
         // Transform Modes
         const setModeUI = (mode) => {
@@ -192,16 +233,30 @@ export class UIManager {
     setSelectedObject(object) {
         if (!object) {
             this.panel.classList.add('hidden');
+            if (this.suggestionsPanel) this.suggestionsPanel.classList.add('hidden');
             this.noSelectionMsg.classList.remove('hidden');
             AppState.setSelectedObject(null);
             return;
         }
 
-        this.noSelectionMsg.classList.add('hidden');
-        this.panel.classList.remove('hidden');
+        const isSameObject = AppState.selectedObject === object;
+
+        if (!isSameObject) {
+            this.noSelectionMsg.classList.add('hidden');
+            
+            if (object.userData.isHouse && this.suggestionsPanel) {
+                this.panel.classList.add('hidden');
+                this.suggestionsPanel.classList.remove('hidden');
+                this.renderAiSuggestions(object);
+            } else {
+                this.panel.classList.remove('hidden');
+                if (this.suggestionsPanel) this.suggestionsPanel.classList.add('hidden');
+            }
+            
+            AppState.setSelectedObject(object);
+        }
         
         this.propName.value = object.name;
-        AppState.setSelectedObject(object);
         
         this.posInputs.x.value = object.position.x.toFixed(2);
         this.posInputs.y.value = object.position.y.toFixed(2);
@@ -218,5 +273,43 @@ export class UIManager {
         if (object.material) {
             this.propColor.value = '#' + object.material.color.getHexString();
         }
+    }
+
+    renderAiSuggestions(houseObj) {
+        if (!this.suggestionsList || !this.suggestionsTargetName) return;
+
+        this.suggestionsTargetName.textContent = houseObj.userData.templateName || 'House';
+        this.suggestionsList.innerHTML = '';
+
+        const suggestions = generateSuggestions(houseObj, 4);
+
+        if (suggestions.length === 0) {
+            this.suggestionsList.innerHTML = `<div class="suggestion-empty">No suggestions available right now.</div>`;
+            return;
+        }
+
+        suggestions.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'suggestion-card';
+            
+            const text = document.createElement('div');
+            text.className = 'suggestion-text';
+            text.textContent = s.text;
+            card.appendChild(text);
+
+            if (s.apply) {
+                const btn = document.createElement('button');
+                btn.className = 'suggestion-apply-btn';
+                btn.textContent = 'Apply';
+                btn.onclick = () => {
+                    s.apply(houseObj);
+                    if (this.onObjectModified) this.onObjectModified();
+                    this.renderAiSuggestions(houseObj); // Refresh suggestions after applying
+                };
+                card.appendChild(btn);
+            }
+
+            this.suggestionsList.appendChild(card);
+        });
     }
 }

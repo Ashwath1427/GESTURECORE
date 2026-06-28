@@ -39,7 +39,9 @@ export class FaceDetectorSystem {
 
     async startCamera() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: { ideal: 640 }, height: { ideal: 480 } } 
+            });
             this.video.srcObject = stream;
             
             await new Promise((resolve) => {
@@ -72,15 +74,19 @@ export class FaceDetectorSystem {
         this.ui.showScanLine(true);
         this.stableFaceSince = 0;
         
+        let lastDetectTime = 0;
         const loop = () => {
             if (!this.isActive) return;
             
             if (this.video.readyState >= 2 && this.faceDetector) {
                 let startTimeMs = performance.now();
-                if (this.lastVideoTime !== this.video.currentTime) {
-                    this.lastVideoTime = this.video.currentTime;
-                    const results = this.faceDetector.detectForVideo(this.video, startTimeMs);
-                    this.processResults(results, startTimeMs);
+                if (startTimeMs - lastDetectTime > 150) { // Throttle to ~6 FPS
+                    if (this.lastVideoTime !== this.video.currentTime) {
+                        this.lastVideoTime = this.video.currentTime;
+                        const results = this.faceDetector.detectForVideo(this.video, startTimeMs);
+                        this.processResults(results, startTimeMs);
+                        lastDetectTime = startTimeMs;
+                    }
                 }
             }
             requestAnimationFrame(loop);

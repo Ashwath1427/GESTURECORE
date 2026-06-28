@@ -7,7 +7,6 @@ import { DemoMode } from './demo-mode.js';
 import { buildSchoolCampus } from './templates-school.js';
 import { PersistenceManager } from './persistence.js';
 import { ConstructRunner } from './construct-runner.js';
-
 class App {
     constructor() {
         this.container = document.getElementById('canvas-container');
@@ -94,6 +93,29 @@ class App {
                 this.startDemo();
             });
         }
+
+        // Design Mode button
+        const btnDesignMode = document.getElementById('btn-design-mode');
+        if (btnDesignMode) {
+            btnDesignMode.addEventListener('click', () => {
+                if (this.designMode.active) {
+                    this.designMode.exit();
+                    btnDesignMode.textContent = '🏠 Design Mode';
+                    btnDesignMode.classList.remove('design-active');
+                } else {
+                    this.designMode.enter();
+                    btnDesignMode.textContent = '✏️ Editor Mode';
+                    btnDesignMode.classList.add('design-active');
+                }
+            });
+        }
+
+        // Sync selection to design mode
+        const originalOnSelection = this.transformSystem.onSelectionChanged;
+        this.transformSystem.onSelectionChanged = (object) => {
+            if (originalOnSelection) originalOnSelection(object);
+            this.uiManager.setSelectedObject(object);
+        };
     }
 
     startDemo() {

@@ -157,9 +157,10 @@ export class ObjectRegistry {
         mesh.frustumCulled = false; // Bypass culling issues on older GPUs
 
         // collision-aware offset spawn (simple jitter so they don't stack perfectly)
+        const meshHeight = (geometry.parameters && geometry.parameters.height) ? geometry.parameters.height : 0;
         mesh.position.set(
             (Math.random() - 0.5) * 2,
-            geometry.parameters.height ? geometry.parameters.height / 2 : 0, 
+            meshHeight / 2, 
             (Math.random() - 0.5) * 2
         );
 
@@ -172,6 +173,20 @@ export class ObjectRegistry {
         this.saveState();
         PersistenceManager.saveScene(this.objects);
         return mesh;
+    }
+
+    addObject(object) {
+        object.userData.isSelectable = true;
+        object.traverse(child => {
+            if (child.isMesh || child.type === 'Mesh') {
+                child.userData.isSelectable = true;
+            }
+        });
+        this.scene.add(object);
+        this.objects.push(object);
+        this.saveState();
+        PersistenceManager.saveScene(this.objects);
+        return object;
     }
 
     duplicate(object) {
@@ -191,76 +206,88 @@ export class ObjectRegistry {
         return newMesh;
     }
 
-    remove(object) {
+    remove(object, skipSave = false) {
         if (!object) return;
         const index = this.objects.indexOf(object);
         if (index > -1) {
+            window.dispatchEvent(new CustomEvent('app-object-removing', { detail: { object } }));
             this.objects.splice(index, 1);
             this.scene.remove(object);
-            if(object.geometry) object.geometry.dispose();
-            if(object.material) object.material.dispose();
-            this.saveState();
-            PersistenceManager.saveScene(this.objects);
+            
+            object.traverse(child => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                        else child.material.dispose();
+                    }
+                }
+            });
+
+            if (!skipSave) {
+                this.saveState();
+                PersistenceManager.saveScene(this.objects);
+            }
         }
     }
 
     clearScene() {
+        window.dispatchEvent(new Event('app-scene-clearing'));
         // Create a copy of the array before removing items
         const objectsToRemove = [...this.objects];
         for (const obj of objectsToRemove) {
-            this.remove(obj);
+            this.remove(obj, true);
         }
         this.counters = { 
             Cube: 0, Sphere: 0, Cylinder: 0, Plane: 0,
             Cone: 0, Torus: 0, Capsule: 0, Pyramid: 0, Disc: 0, Ring: 0, Wedge: 0 
         };
         this.saveState();
+        PersistenceManager.saveScene(this.objects);
     }
 
     serialize() {
-        return JSON.stringify(this.objects.map(obj => ({
-            name: obj.name,
-            type: obj.userData.type,
-            position: obj.position.toArray(),
-            rotation: obj.rotation.toArray(),
-            scale: obj.scale.toArray(),
-            color: obj.material.color.getHex()
-        })));
+        const state = [];
+        this.scene.traverse(obj => {
+            if (obj.userData.isSelectable || obj.userData.isHouse || obj.userData.isRocket) {
+                state.push({
+                    uuid: obj.uuid,
+                    position: obj.position.toArray(),
+                    rotation: obj.rotation.toArray(),
+                    scale: obj.scale.toArray(),
+                    color: (obj.material && obj.material.color) ? obj.material.color.getHex() : null
+                });
+            }
+        });
+        return JSON.stringify(state);
     }
 
     deserialize(jsonString) {
-        this.clearScene();
         try {
             const data = JSON.parse(jsonString);
+            const stateMap = {};
+            data.forEach(item => stateMap[item.uuid] = item);
             
             // Temporarily disable saving state during deserialization
             const wasRestoring = this.isRestoring;
             this.isRestoring = true;
             
-            data.forEach(item => {
-                let mesh;
-                switch (item.type) {
-                    case 'Cube': mesh = this.addCube(); break;
-                    case 'Sphere': mesh = this.addSphere(); break;
-                    case 'Cylinder': mesh = this.addCylinder(); break;
-                    case 'Plane': mesh = this.addPlane(); break;
-                    case 'Cone': mesh = this.addCone(); break;
-                    case 'Torus': mesh = this.addTorus(); break;
-                    case 'Capsule': mesh = this.addCapsule(); break;
-                    case 'Pyramid': mesh = this.addPyramid(); break;
-                    case 'Disc': mesh = this.addDisc(); break;
-                    case 'Ring': mesh = this.addRing(); break;
-                    case 'Wedge': mesh = this.addWedge(); break;
-                    default: return;
+            this.scene.traverse(obj => {
+                if (obj.userData.isSelectable || obj.userData.isHouse || obj.userData.isRocket) {
+                    const item = stateMap[obj.uuid];
+                    if (item) {
+                        obj.position.fromArray(item.position);
+                        obj.rotation.fromArray(item.rotation);
+                        obj.scale.fromArray(item.scale);
+                        if (item.color !== null && obj.material && obj.material.color) {
+                            obj.material.color.setHex(item.color);
+                        }
+                    }
                 }
-                mesh.name = item.name;
-                mesh.position.fromArray(item.position);
-                mesh.rotation.fromArray(item.rotation);
-                mesh.scale.fromArray(item.scale);
-                mesh.material.color.setHex(item.color);
             });
             
             this.isRestoring = wasRestoring;
+            window.dispatchEvent(new Event('app-scene-updated'));
         } catch (e) {
             console.error("Failed to load scene state", e);
         }

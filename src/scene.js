@@ -15,7 +15,7 @@ export class SceneManager {
         const aspect = width / height;
         
         this.camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 1000);
-        this.camera.position.set(5, 5, 5);
+        this.camera.position.set(25, 20, 25);
         this.camera.lookAt(0, 0, 0);
 
         // Setup renderer
@@ -28,6 +28,11 @@ export class SceneManager {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
+        this.controls.mouseButtons = {
+            LEFT: null,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE
+        };
 
         this.defaultCameraPosition = this.camera.position.clone();
         this.defaultCameraTarget = this.controls.target.clone();
@@ -36,12 +41,9 @@ export class SceneManager {
     }
 
     setupEnvironment() {
-        // Grid & Axes
+        // Grid
         const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
         this.scene.add(gridHelper);
-
-        const axesHelper = new THREE.AxesHelper(5);
-        this.scene.add(axesHelper);
 
         // Lights
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);

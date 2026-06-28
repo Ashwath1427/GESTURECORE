@@ -121,11 +121,13 @@ class VoiceMode {
         this.liveAudioPromise = null;
     }
 
-    async handleTranscript({ text, confidence }) {
+    async handleTranscript({ text, confidence, isFinal }) {
         this.transcriptReceived = true;
         this.lastTranscript = text;
         this.ui.setTranscript(text);
         
+        if (!isFinal) return;
+
         // 3. Command Parse
         const cmd = parseVoiceCommand(text);
         this.ui.setDebugCmd(`${cmd.type} (${cmd.score || 0})`);
