@@ -153,10 +153,15 @@ class GestureSystem {
             
             if (this.video.readyState >= 2 && this.handLandmarker) {
                 let startTimeMs = performance.now();
-                if (this.lastVideoTime !== this.video.currentTime) {
-                    this.lastVideoTime = this.video.currentTime;
-                    const results = this.handLandmarker.detectForVideo(this.video, startTimeMs);
-                    this.processResults(results);
+                if (!this.lastDetectionTime) this.lastDetectionTime = 0;
+                // Throttle detection to ~15 FPS (66ms) to prevent UI/WebGL lag
+                if (startTimeMs - this.lastDetectionTime > 66) {
+                    if (this.lastVideoTime !== this.video.currentTime) {
+                        this.lastDetectionTime = startTimeMs;
+                        this.lastVideoTime = this.video.currentTime;
+                        const results = this.handLandmarker.detectForVideo(this.video, startTimeMs);
+                        this.processResults(results);
+                    }
                 }
             }
             this.animationFrameId = requestAnimationFrame(loop);
