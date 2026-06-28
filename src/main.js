@@ -7,6 +7,8 @@ import { DemoMode } from './demo-mode.js';
 import { buildSchoolCampus } from './templates-school.js';
 import { PersistenceManager } from './persistence.js';
 import { ConstructRunner } from './construct-runner.js';
+import { DesignModeHouse } from './design-mode-house.js';
+
 class App {
     constructor() {
         this.container = document.getElementById('canvas-container');
@@ -24,6 +26,7 @@ class App {
 
         this.uiManager = new UIManager(this.objectRegistry, this.transformSystem, this.sceneManager);
         this.demoMode = new DemoMode(this);
+        this.designMode = new DesignModeHouse(this);
 
         this.setupEvents();
         this.animate();

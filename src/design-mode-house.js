@@ -334,42 +334,71 @@ export class DesignModeHouse {
     }
 
     // ============================================================
-    // VOICE COMMAND EXECUTION
+    // VOICE COMMAND EXECUTION & AI SUGGESTIONS
     // ============================================================
 
+    speak(text) {
+        if (!window.speechSynthesis) return;
+        // Cancel any currently playing speech to avoid overlapping chatter
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    speakNextSuggestion() {
+        if (!this.selectedHouse) return;
+        const suggestions = generateSuggestions(this.selectedHouse);
+        if (suggestions.length > 0) {
+            // Read out the first (highest priority) suggestion
+            this.speak(suggestions[0].suggestion);
+        }
+    }
+
     executeDesignCommand(cmd) {
+        let handled = false;
         switch (cmd.type) {
             case 'DESIGN_BUILD_HOUSE':
                 this.buildHouse(cmd.template);
-                return true;
+                handled = true;
+                break;
 
             case 'DESIGN_ADD_PART':
                 this.addPartToSelected(cmd.part);
-                return true;
+                handled = true;
+                break;
 
             case 'DESIGN_APPLY_PRESET':
                 this.applyPreset(cmd.preset);
-                return true;
+                handled = true;
+                break;
 
             case 'DESIGN_COLOR_PART':
                 this.colorPart(cmd.part, cmd.color);
-                return true;
+                handled = true;
+                break;
 
             case 'DESIGN_COLOR_ALL':
                 this.colorAll(cmd.color);
-                return true;
+                handled = true;
+                break;
 
             case 'DESIGN_ROTATE_HOUSE':
                 this.rotateHouse();
-                return true;
+                handled = true;
+                break;
 
             case 'DESIGN_ADD_HOUSE_ROW':
                 this.addHouseRow(cmd.count, cmd.template || 'simple');
-                return true;
+                handled = true;
+                break;
 
             case 'DESIGN_ADD_AMENITY':
                 this.addAmenity(cmd.amenity);
-                return true;
+                handled = true;
+                break;
 
             case 'DESIGN_COMMUNITY_MODE':
                 if (!this.communityMode) {
@@ -381,15 +410,23 @@ export class DesignModeHouse {
                     }
                     this.ui.showDesignToast('Community Layout Mode');
                 }
-                return true;
+                handled = true;
+                break;
 
             case 'DESIGN_EXIT':
                 this.exit();
-                return true;
-
-            default:
-                return false;
+                handled = true;
+                break;
         }
+        
+        if (handled) {
+            // After any successful design action, let the AI speak a suggestion
+            // Add a tiny delay so the voice feels like an authentic response
+            setTimeout(() => this.speakNextSuggestion(), 800);
+            return true;
+        }
+
+        return false;
     }
 
     // ============================================================
