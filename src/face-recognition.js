@@ -38,7 +38,8 @@ export class FaceRecognitionSystem {
     async tryLoadStaticReference() {
         const identities = [
             { id: 'ashwath', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg'] },
-            { id: 'sai', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg'] }
+            { id: 'sai', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg'] },
+            { id: 'lavith', files: ['1.jpg', '2.jpg', '3.jpg'] }
         ];
 
         let staticLoaded = false;

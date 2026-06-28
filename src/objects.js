@@ -23,6 +23,9 @@ export class ObjectRegistry {
         this.history = [];
         this.historyIndex = -1;
         this.isRestoring = false;
+        
+        // Keep a reference to all objects ever created so we can restore them in undo
+        this.allObjects = {};
     }
 
     saveState() {
@@ -170,6 +173,7 @@ export class ObjectRegistry {
 
         this.scene.add(mesh);
         this.objects.push(mesh);
+        this.allObjects[mesh.uuid] = mesh;
         this.saveState();
         PersistenceManager.saveScene(this.objects);
         return mesh;
@@ -184,6 +188,7 @@ export class ObjectRegistry {
         });
         this.scene.add(object);
         this.objects.push(object);
+        this.allObjects[object.uuid] = object;
         this.saveState();
         PersistenceManager.saveScene(this.objects);
         return object;
@@ -201,6 +206,7 @@ export class ObjectRegistry {
         
         this.scene.add(newMesh);
         this.objects.push(newMesh);
+        this.allObjects[newMesh.uuid] = newMesh;
         this.saveState();
         PersistenceManager.saveScene(this.objects);
         return newMesh;
@@ -214,15 +220,8 @@ export class ObjectRegistry {
             this.objects.splice(index, 1);
             this.scene.remove(object);
             
-            object.traverse(child => {
-                if (child.isMesh) {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                        else child.material.dispose();
-                    }
-                }
-            });
+            // Do NOT dispose geometry and material here, because we might need them for UNDO
+            // object.traverse(child => { ... dispose() ... });
 
             if (!skipSave) {
                 this.saveState();
@@ -272,22 +271,53 @@ export class ObjectRegistry {
             const wasRestoring = this.isRestoring;
             this.isRestoring = true;
             
+            // 1. Remove objects that shouldn't be in the scene
+            const toRemove = [];
             this.scene.traverse(obj => {
                 if (obj.userData.isSelectable || obj.userData.isHouse || obj.userData.isRocket) {
-                    const item = stateMap[obj.uuid];
-                    if (item) {
-                        obj.position.fromArray(item.position);
-                        obj.rotation.fromArray(item.rotation);
-                        obj.scale.fromArray(item.scale);
-                        if (item.color !== null && obj.material && obj.material.color) {
-                            obj.material.color.setHex(item.color);
-                        }
+                    if (!stateMap[obj.uuid]) {
+                        toRemove.push(obj);
+                    }
+                }
+            });
+            toRemove.forEach(obj => {
+                this.scene.remove(obj);
+                const idx = this.objects.indexOf(obj);
+                if (idx > -1) this.objects.splice(idx, 1);
+            });
+            
+            // 2. Add or update objects that SHOULD be in the scene
+            data.forEach(item => {
+                const obj = this.allObjects[item.uuid];
+                if (obj) {
+                    if (!this.scene.children.includes(obj)) {
+                        this.scene.add(obj);
+                    }
+                    if (!this.objects.includes(obj)) {
+                        this.objects.push(obj);
+                    }
+                    
+                    obj.position.fromArray(item.position);
+                    obj.rotation.fromArray(item.rotation);
+                    obj.scale.fromArray(item.scale);
+                    if (item.color !== null && obj.material && obj.material.color) {
+                        obj.material.color.setHex(item.color);
                     }
                 }
             });
             
             this.isRestoring = wasRestoring;
             window.dispatchEvent(new Event('app-scene-updated'));
+            
+            // Clear selection if the selected object was removed
+            if (window.app && window.app.transformSystem) {
+                if (window.app.transformSystem.selectedObject) {
+                    if (!this.objects.includes(window.app.transformSystem.selectedObject)) {
+                        window.app.transformSystem.selectObject(null);
+                    }
+                }
+            }
+            
         } catch (e) {
             console.error("Failed to load scene state", e);
         }
