@@ -2,7 +2,7 @@
 // community-layout.js — Gated community grid, house rows, amenities
 // ============================================================
 import * as THREE from 'three';
-import { createSimpleHouse, create2BHKHouse, HOUSE_TEMPLATES } from './house-templates.js';
+import { HOUSE_TEMPLATES } from './house-templates.js';
 
 // ── Helper material ──────────────────────────────────────────
 function mat(color, opts = {}) {
