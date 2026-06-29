@@ -1,13 +1,13 @@
-import { SceneManager } from './scene.js';
-import { ObjectRegistry } from './objects.js';
-import { TransformSystem } from './transform.js';
-import { UIManager } from './ui.js';
-import { lockScreenSystem } from './lock-screen.js';
-import { DemoMode } from './demo-mode.js';
-import { buildSchoolCampus } from './templates-school.js';
-import { PersistenceManager } from './persistence.js';
-import { ConstructRunner } from './construct-runner.js';
-import { DesignModeHouse } from './design-mode-house.js';
+import { SceneManager } from './scene.js?v=3';
+import { ObjectRegistry } from './objects.js?v=3';
+import { TransformSystem } from './transform.js?v=3';
+import { UIManager } from './ui.js?v=3';
+import { lockScreenSystem } from './lock-screen.js?v=3';
+import { DemoMode } from './demo-mode.js?v=3';
+import { buildSchoolCampus } from './templates-school.js?v=3';
+import { PersistenceManager } from './persistence.js?v=3';
+import { ConstructRunner } from './construct-runner.js?v=3';
+import { DesignModeHouse } from './design-mode-house.js?v=3';
 
 class App {
     constructor() {
@@ -40,10 +40,21 @@ class App {
         // Apply Guest Mode theme if authenticated as guest
         if (window.isGuestMode) {
             document.body.classList.add('guest-mode');
-            // Update logo text
             const logoSpan = document.querySelector('#top-bar .logo span');
             if (logoSpan) logoSpan.textContent = 'GUEST';
         }
+
+        this.setupEnvironment();
+    }
+
+    setupEnvironment() {
+        console.log("DEBUG SCENE GRAPH:");
+        this.sceneManager.scene.traverse(node => {
+            console.log(`Node: ${node.type} | Name: ${node.name} | Visible: ${node.visible} | Pos: ${node.position.toArray()}`);
+        });
+        
+        const gl = this.sceneManager.renderer.getContext();
+        console.log("DEBUG WEBGL ERROR STATE:", gl.getError());
     }
 
     setupEvents() {
@@ -69,17 +80,29 @@ class App {
             PersistenceManager.saveSceneDebounced(this.objectRegistry.objects);
         };
 
+        // Universal Object Placement Flow
+        window.addEventListener('app-object-added', (e) => {
+            const newObj = e.detail.object;
+            if (newObj) {
+                // Auto-select
+                this.transformSystem.selectObject(newObj);
+                
+                // Camera framing
+                setTimeout(() => {
+                    this.sceneManager.centerCameraOnSelectedObject(newObj, 600);
+                }, 50); // slight delay to ensure matrices are settled
+                
+                // Visual pop
+                this.sceneManager.highlightObject(newObj);
+            }
+        });
+
         // Listen for gesture menu events
         window.addEventListener('gesture-add-shape', (e) => {
             const shapeType = e.detail.type;
-            let newObj = null;
-            if (shapeType === 'cube') newObj = this.objectRegistry.addCube();
-            else if (shapeType === 'sphere') newObj = this.objectRegistry.addSphere();
-            else if (shapeType === 'cylinder') newObj = this.objectRegistry.addCylinder();
-            
-            if (newObj) {
-                this.transformSystem.selectObject(newObj);
-            }
+            if (shapeType === 'cube') this.objectRegistry.addCube();
+            else if (shapeType === 'sphere') this.objectRegistry.addSphere();
+            else if (shapeType === 'cylinder') this.objectRegistry.addCylinder();
         });
 
         // Demo Mode buttons

@@ -132,6 +132,33 @@ export class SceneManager {
         }
         requestAnimationFrame(tick);
     }
+
+    highlightObject(object, duration = 400) {
+        if (!object) return;
+        
+        const originalScale = object.scale.clone();
+        const targetScale = originalScale.clone().multiplyScalar(1.2);
+        
+        const startTime = performance.now();
+        
+        function tick() {
+            const t = Math.min((performance.now() - startTime) / duration, 1);
+            
+            // Sine wave for smooth pop and return (peaks at 1 when t=0.5)
+            const progress = Math.sin(t * Math.PI); 
+            
+            object.scale.lerpVectors(originalScale, targetScale, progress);
+            object.updateMatrixWorld(true);
+            
+            if (t < 1) {
+                requestAnimationFrame(tick);
+            } else {
+                object.scale.copy(originalScale);
+                object.updateMatrixWorld(true);
+            }
+        }
+        requestAnimationFrame(tick);
+    }
     render() {
         this.controls.update();
         this.renderer.render(this.scene, this.camera);

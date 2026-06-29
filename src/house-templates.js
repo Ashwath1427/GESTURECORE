@@ -593,6 +593,54 @@ export function addDrivewayToHouse(house) {
     return driveway;
 }
 
+export function addJaaliScreenToHouse(house) {
+    const bbox = new THREE.Box3().setFromObject(house);
+    
+    // Create a patterned texture using a canvas for the Jaali
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    // Background (transparent)
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0, 0, 256, 256);
+    
+    // Pattern color
+    ctx.fillStyle = '#d2b48c'; // Terracotta/wood tone
+    
+    // Draw a geometric pattern
+    for(let x=0; x<256; x+=32) {
+        for(let y=0; y<256; y+=32) {
+            ctx.fillRect(x+4, y+4, 24, 24);
+            ctx.clearRect(x+8, y+8, 16, 16);
+            ctx.fillRect(x+12, y+12, 8, 8);
+        }
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 4);
+
+    const jaaliMat = new THREE.MeshStandardMaterial({ 
+        map: texture,
+        transparent: true,
+        alphaTest: 0.5,
+        color: 0xffffff,
+        side: THREE.DoubleSide
+    });
+
+    const jaali = new THREE.Mesh(new THREE.PlaneGeometry(2, 4), jaaliMat);
+    jaali.name = 'Jaali_Screen';
+    // Position on the side of the house, roughly
+    jaali.position.set(bbox.max.x + 0.1, 2, 0);
+    jaali.rotation.y = Math.PI / 2;
+    house.add(jaali);
+    
+    return jaali;
+}
+
 // ── Template registry for easy lookup ────────────────────────
 export const HOUSE_TEMPLATES = {
     'simple':      createGLKHouse,

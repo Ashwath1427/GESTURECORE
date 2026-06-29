@@ -76,22 +76,22 @@ export class ObjectRegistry {
     }
 
     addCube() {
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const geometry = new THREE.BoxGeometry(3, 3, 3);
         return this.createMesh(geometry, 'Cube');
     }
 
     addSphere() {
-        const geometry = new THREE.SphereGeometry(0.6, 32, 16);
+        const geometry = new THREE.SphereGeometry(1.8, 32, 16);
         return this.createMesh(geometry, 'Sphere');
     }
 
     addCylinder() {
-        const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+        const geometry = new THREE.CylinderGeometry(1.5, 1.5, 3, 32);
         return this.createMesh(geometry, 'Cylinder');
     }
 
     addPlane() {
-        const geometry = new THREE.PlaneGeometry(2, 2);
+        const geometry = new THREE.PlaneGeometry(6, 6);
         // rotate plane to lie flat by default
         const mesh = this.createMesh(geometry, 'Plane');
         mesh.rotation.x = -Math.PI / 2;
@@ -99,33 +99,35 @@ export class ObjectRegistry {
     }
 
     addCone() {
-        const geometry = new THREE.ConeGeometry(1, 2, 32);
+        const geometry = new THREE.ConeGeometry(1.5, 3, 32);
         return this.createMesh(geometry, 'Cone');
     }
 
     addTorus() {
-        const geometry = new THREE.TorusGeometry(1.5, 0.4, 16, 100);
+        const geometry = new THREE.TorusGeometry(1.5, 0.5, 16, 100);
         return this.createMesh(geometry, 'Torus');
     }
 
     addCapsule() {
-        const geometry = new THREE.CapsuleGeometry(0.5, 1.5, 8, 16);
+        const geometry = new THREE.CapsuleGeometry(1, 2, 4, 16);
         return this.createMesh(geometry, 'Capsule');
     }
 
     addPyramid() {
-        const geometry = new THREE.CylinderGeometry(0, 1.5, 3, 4);
+        const geometry = new THREE.CylinderGeometry(0, 2, 3, 4, 1);
         return this.createMesh(geometry, 'Pyramid');
     }
 
     addDisc() {
-        const geometry = new THREE.CylinderGeometry(2, 2, 0.2, 32);
+        const geometry = new THREE.CylinderGeometry(3, 3, 0.2, 32);
         return this.createMesh(geometry, 'Disc');
     }
 
     addRing() {
-        const geometry = new THREE.TorusGeometry(2, 0.3, 8, 64);
-        return this.createMesh(geometry, 'Ring');
+        const geometry = new THREE.TorusGeometry(3, 0.3, 16, 64);
+        const mesh = this.createMesh(geometry, 'Ring');
+        mesh.rotation.x = -Math.PI / 2;
+        return mesh;
     }
 
     addWedge() {
@@ -148,10 +150,50 @@ export class ObjectRegistry {
         return this.createMesh(geometry, 'Wedge');
     }
 
+    normalizeAndGroundObject(object, maxDim = 5) {
+        // Ensure matrix is updated to calculate bounds properly
+        object.updateMatrixWorld(true);
+
+        const box = new THREE.Box3().setFromObject(object);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        // Normalize Scale
+        const largestDimension = Math.max(size.x, size.y, size.z);
+        if (largestDimension > 0) {
+            const scaleFactor = Math.min(1, maxDim / largestDimension);
+            if (scaleFactor !== 1) {
+                object.scale.setScalar(scaleFactor);
+                object.updateMatrixWorld(true);
+                box.setFromObject(object); // Recompute after scale
+            }
+        }
+
+        // Center near current camera target if available
+        let targetX = 0;
+        let targetZ = 0;
+        if (window.app && window.app.sceneManager && window.app.sceneManager.controls) {
+            const tgt = window.app.sceneManager.controls.target;
+            targetX = tgt.x + (Math.random() - 0.5) * 1.5;
+            targetZ = tgt.z + (Math.random() - 0.5) * 1.5;
+        } else {
+            targetX = (Math.random() - 0.5) * 2;
+            targetZ = (Math.random() - 0.5) * 2;
+        }
+
+        // Ground on Y=0
+        const yOffset = -box.min.y;
+
+        object.position.set(targetX, object.position.y + yOffset, targetZ);
+        object.updateMatrix();
+        object.updateMatrixWorld(true);
+    }
+
     createMesh(geometry, type) {
         this.counters[type]++;
-        const material = new THREE.MeshLambertMaterial({ 
-            color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5) 
+        const material = new THREE.MeshBasicMaterial({ 
+            color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5),
+            side: THREE.DoubleSide
         });
         const mesh = new THREE.Mesh(geometry, material);
         mesh.name = `${type} ${this.counters[type]}`;
@@ -159,23 +201,15 @@ export class ObjectRegistry {
         mesh.userData.type = type;
         mesh.frustumCulled = false; // Bypass culling issues on older GPUs
 
-        // collision-aware offset spawn (simple jitter so they don't stack perfectly)
-        const meshHeight = (geometry.parameters && geometry.parameters.height) ? geometry.parameters.height : 0;
-        mesh.position.set(
-            (Math.random() - 0.5) * 2,
-            meshHeight / 2, 
-            (Math.random() - 0.5) * 2
-        );
-
-        // force immediate matrix updates
-        mesh.updateMatrix();
-        mesh.updateMatrixWorld(true);
+        this.normalizeAndGroundObject(mesh);
 
         this.scene.add(mesh);
         this.objects.push(mesh);
         this.allObjects[mesh.uuid] = mesh;
         this.saveState();
         PersistenceManager.saveScene(this.objects);
+        
+        window.dispatchEvent(new CustomEvent('app-object-added', { detail: { object: mesh } }));
         return mesh;
     }
 
@@ -184,13 +218,21 @@ export class ObjectRegistry {
         object.traverse(child => {
             if (child.isMesh || child.type === 'Mesh') {
                 child.userData.isSelectable = true;
+                if (child.material) {
+                    child.material.side = THREE.DoubleSide;
+                }
             }
         });
+        
+        this.normalizeAndGroundObject(object, 15); // Templates can be slightly larger
+
         this.scene.add(object);
         this.objects.push(object);
         this.allObjects[object.uuid] = object;
         this.saveState();
         PersistenceManager.saveScene(this.objects);
+        
+        window.dispatchEvent(new CustomEvent('app-object-added', { detail: { object: object } }));
         return object;
     }
 
@@ -209,6 +251,8 @@ export class ObjectRegistry {
         this.allObjects[newMesh.uuid] = newMesh;
         this.saveState();
         PersistenceManager.saveScene(this.objects);
+        
+        window.dispatchEvent(new CustomEvent('app-object-added', { detail: { object: newMesh } }));
         return newMesh;
     }
 

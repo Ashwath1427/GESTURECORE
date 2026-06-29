@@ -144,6 +144,25 @@ export class FaceRecognitionSystem {
         }
     }
 
+    async tryLoadDynamicReferences() {
+        try {
+            const response = await fetch('/api/faces');
+            if (response.ok) {
+                const dynamicFaces = await response.json();
+                dynamicFaces.forEach(face => {
+                    this.enrolledDescriptors.push({
+                        personId: face.name,
+                        name: 'Dynamic Registration',
+                        descriptor: new Float32Array(face.descriptor)
+                    });
+                });
+                console.log(`[FaceRec] Loaded ${dynamicFaces.length} dynamic reference(s) from server.`);
+            }
+        } catch (e) {
+            console.error(`[FaceRec] Failed to load dynamic references:`, e);
+        }
+    }
+
     async loadModels() {
         if (this.modelsLoaded) return;
         
@@ -161,6 +180,9 @@ export class FaceRecognitionSystem {
             // Try to load a static reference.jpg from the folder.
             // If it succeeds, it replaces the localStorage enrollment.
             await this.tryLoadStaticReference();
+            
+            // Also load dynamic references from the server
+            await this.tryLoadDynamicReferences();
         } catch (e) {
             this.ui.setFaceStatus('Model Load Failed', 'error');
             throw e;

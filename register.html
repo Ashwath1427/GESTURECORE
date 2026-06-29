@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Registration - Shape Flow</title>
+    <link rel="icon" type="image/jpeg" href="assets/shape-flow-logo.jpg">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .registration-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background: rgba(10, 10, 15, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .face-list {
+            margin-top: 30px;
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .face-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .face-item:last-child {
+            border-bottom: none;
+        }
+
+        .face-name {
+            font-size: 1.1em;
+            color: white;
+            text-transform: capitalize;
+        }
+
+        .permanent-badge {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+
+        .delete-btn {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .delete-btn:hover {
+            background: rgba(255, 68, 68, 0.4);
+        }
+
+        #reg-camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #4ade80;
+        }
+
+        #reg-video, #reg-canvas {
+            width: 100%;
+            display: block;
+        }
+
+        #reg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .input-group {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .name-input {
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 1em;
+            width: 250px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #4ade80;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Override style.css for scrolling */
+        body {
+            overflow-y: auto !important;
+            height: auto !important;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
+</head>
+<body>
+    <!-- PIN Lock Overlay for Registration -->
+    <div id="reg-pin-overlay" class="premium-workspace-shell">
+        <div class="landing-body" style="justify-content: center; align-items: center; min-height: 100vh; display: flex;">
+            <div class="login-container premium-auth-card" style="text-align: center;">
+                <div class="login-header">
+                    <img src="assets/shape-flow-logo.jpg" alt="Shape Flow logo" class="auth-logo">
+                    <h2>Admin Registration Access</h2>
+                </div>
+                <div style="margin: 20px 0;">
+                    <p>Enter 8-digit Admin PIN</p>
+                    <input type="password" id="reg-pin-input" maxlength="8" placeholder="••••••••" autocomplete="off" style="padding: 10px; font-size: 1.2em; width: 150px; text-align: center; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; letter-spacing: 3px;" />
+                    <p id="reg-pin-error" class="error-msg hidden" style="color: #ff4444; margin-top: 10px;">Incorrect PIN</p>
+                </div>
+                <a href="index.html" style="color: #aaa; text-decoration: none; font-size: 0.9em;">&larr; Back to Login</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Dashboard (Hidden until PIN) -->
+    <div id="reg-dashboard" class="hidden" style="padding: 40px; min-height: 100vh; background: #050505;">
+        <div class="registration-container">
+            <a href="index.html" class="back-link">&larr; Back to Shape Flow</a>
+            <h1 style="color: white; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">Face Registration Management</h1>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <h3 style="color: #ccc;">Register New Face</h3>
+                
+                <div id="reg-status" style="color: #4ade80; height: 20px; margin-bottom: 10px;">Initializing Camera...</div>
+                
+                <div id="reg-camera-container">
+                    <video id="reg-video" autoplay playsinline muted></video>
+                    <canvas id="reg-canvas"></canvas>
+                </div>
+                
+                <div class="input-group">
+                    <input type="text" id="reg-name-input" class="name-input" placeholder="Enter person's name..." />
+                    <button id="btn-register-face" class="primary-btn glass-btn" disabled>Scan & Register</button>
+                </div>
+            </div>
+
+            <div class="face-list">
+                <h3 style="color: white; margin-bottom: 15px;">Registered Faces</h3>
+                <div id="faces-container">
+                    <p style="color: #aaa;">Loading faces...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/register.js"></script>
+</body>
+</html>

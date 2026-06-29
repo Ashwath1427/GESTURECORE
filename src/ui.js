@@ -25,7 +25,7 @@ export class UIManager {
         const btnRefreshSuggestions = document.getElementById('btn-refresh-suggestions');
         if (btnRefreshSuggestions) {
             btnRefreshSuggestions.addEventListener('click', () => {
-                if (this.transform.selectedObject && this.transform.selectedObject.userData.isHouse) {
+                if (this.transform.selectedObject) {
                     this.renderAiSuggestions(this.transform.selectedObject);
                 }
             });
@@ -89,23 +89,30 @@ export class UIManager {
     }
 
     setupEventListeners() {
-        // Toolbar actions
-        document.getElementById('btn-add-cube').onclick = () => this.transform.selectObject(this.registry.addCube());
-        document.getElementById('btn-add-sphere').onclick = () => this.transform.selectObject(this.registry.addSphere());
-        document.getElementById('btn-add-cylinder').onclick = () => this.transform.selectObject(this.registry.addCylinder());
-        document.getElementById('btn-add-plane').onclick = () => this.transform.selectObject(this.registry.addPlane());
+        window.addEventListener('app-object-added', (e) => {
+            if (e.detail && e.detail.object) {
+                // UI updates
+                this.updateHierarchy();
+                this.showToast(`Added ${e.detail.object.name}`);
+            }
+        });
+
+        // Toolbar actions - Selection is now handled universally by 'app-object-added' event
+        document.getElementById('btn-add-cube').onclick = () => this.registry.addCube();
+        document.getElementById('btn-add-sphere').onclick = () => this.registry.addSphere();
+        document.getElementById('btn-add-cylinder').onclick = () => this.registry.addCylinder();
+        document.getElementById('btn-add-plane').onclick = () => this.registry.addPlane();
         
-        if(document.getElementById('btn-add-cone')) document.getElementById('btn-add-cone').onclick = () => this.transform.selectObject(this.registry.addCone());
-        if(document.getElementById('btn-add-torus')) document.getElementById('btn-add-torus').onclick = () => this.transform.selectObject(this.registry.addTorus());
-        if(document.getElementById('btn-add-capsule')) document.getElementById('btn-add-capsule').onclick = () => this.transform.selectObject(this.registry.addCapsule());
-        if(document.getElementById('btn-add-pyramid')) document.getElementById('btn-add-pyramid').onclick = () => this.transform.selectObject(this.registry.addPyramid());
-        if(document.getElementById('btn-add-disc')) document.getElementById('btn-add-disc').onclick = () => this.transform.selectObject(this.registry.addDisc());
-        if(document.getElementById('btn-add-ring')) document.getElementById('btn-add-ring').onclick = () => this.transform.selectObject(this.registry.addRing());
-        if(document.getElementById('btn-add-wedge')) document.getElementById('btn-add-wedge').onclick = () => this.transform.selectObject(this.registry.addWedge());
+        if(document.getElementById('btn-add-cone')) document.getElementById('btn-add-cone').onclick = () => this.registry.addCone();
+        if(document.getElementById('btn-add-torus')) document.getElementById('btn-add-torus').onclick = () => this.registry.addTorus();
+        if(document.getElementById('btn-add-capsule')) document.getElementById('btn-add-capsule').onclick = () => this.registry.addCapsule();
+        if(document.getElementById('btn-add-pyramid')) document.getElementById('btn-add-pyramid').onclick = () => this.registry.addPyramid();
+        if(document.getElementById('btn-add-disc')) document.getElementById('btn-add-disc').onclick = () => this.registry.addDisc();
+        if(document.getElementById('btn-add-ring')) document.getElementById('btn-add-ring').onclick = () => this.registry.addRing();
+        if(document.getElementById('btn-add-wedge')) document.getElementById('btn-add-wedge').onclick = () => this.registry.addWedge();
         
         document.getElementById('btn-duplicate').onclick = () => {
-            const copy = this.registry.duplicate(this.transform.selectedObject);
-            if(copy) this.transform.selectObject(copy);
+            this.registry.duplicate(this.transform.selectedObject);
         };
         
         const deleteAction = () => {
@@ -124,8 +131,7 @@ export class UIManager {
 
         // Gesture triggers
         window.addEventListener('app-duplicate-requested', () => {
-            const copy = this.registry.duplicate(this.transform.selectedObject);
-            if(copy) this.transform.selectObject(copy);
+            this.registry.duplicate(this.transform.selectedObject);
         });
         window.addEventListener('app-delete-requested', deleteAction);
 
@@ -208,6 +214,8 @@ export class UIManager {
             this.scaleInputs[axis].addEventListener('change', updateTransformFromUI);
         });
 
+
+
         this.propColor.addEventListener('input', (e) => {
             const obj = this.transform.selectedObject;
             if(obj && obj.material) {
@@ -243,14 +251,13 @@ export class UIManager {
 
         if (!isSameObject) {
             this.noSelectionMsg.classList.add('hidden');
+            this.panel.classList.remove('hidden');
             
-            if (object.userData.isHouse && this.suggestionsPanel) {
-                this.panel.classList.add('hidden');
+            if (this.suggestionsPanel) {
+                // In PRO mode, always show AI suggestions for any selected object,
+                // treating it as a part of the design grid to analyze.
                 this.suggestionsPanel.classList.remove('hidden');
                 this.renderAiSuggestions(object);
-            } else {
-                this.panel.classList.remove('hidden');
-                if (this.suggestionsPanel) this.suggestionsPanel.classList.add('hidden');
             }
             
             AppState.setSelectedObject(object);
@@ -275,13 +282,14 @@ export class UIManager {
         }
     }
 
-    renderAiSuggestions(houseObj) {
+    renderAiSuggestions(selectedObj) {
         if (!this.suggestionsList || !this.suggestionsTargetName) return;
 
-        this.suggestionsTargetName.textContent = houseObj.userData.templateName || 'House';
+        this.suggestionsTargetName.textContent = selectedObj.userData.templateName || selectedObj.name || 'Your Design';
         this.suggestionsList.innerHTML = '';
-
-        const suggestions = generateSuggestions(houseObj, 4);
+        
+        // Pure code-based suggestions — instant, no API needed
+        const suggestions = generateSuggestions(selectedObj, 4);
 
         if (suggestions.length === 0) {
             this.suggestionsList.innerHTML = `<div class="suggestion-empty">No suggestions available right now.</div>`;
@@ -302,9 +310,9 @@ export class UIManager {
                 btn.className = 'suggestion-apply-btn';
                 btn.textContent = 'Apply';
                 btn.onclick = () => {
-                    s.apply(houseObj);
+                    s.apply(selectedObj);
                     if (this.onObjectModified) this.onObjectModified();
-                    this.renderAiSuggestions(houseObj); // Refresh suggestions after applying
+                    this.renderAiSuggestions(selectedObj); // Refresh after applying
                 };
                 card.appendChild(btn);
             }

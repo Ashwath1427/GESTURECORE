@@ -871,24 +871,7 @@ input[type="color"] {
     color: #fff;
 }
 
-#login-pin-panel input {
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: white;
-    text-align: center;
-    font-size: 1.5rem;
-    letter-spacing: 10px;
-    padding: 15px;
-    border-radius: 12px;
-    width: 100%;
-    outline: none;
-    transition: border-color 0.2s;
-}
 
-#login-pin-panel input:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
-}
 
 .error-msg {
     color: #ef4444;
@@ -914,33 +897,37 @@ input[type="color"] {
 .status-row strong.waiting { color: #fbbf24; }
 .status-row strong.active { color: var(--accent); }
 
-#login-pin-panel, #login-enroll-panel {
+#login-pin-panel, #login-enroll-panel, #register-pin-panel {
     width: 100%;
     text-align: center;
     margin-bottom: 20px;
 }
 
-#login-pin-input {
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.2);
-    color: white;
+#login-pin-input, #reg-pin-input {
+    background: rgba(139, 92, 246, 0.1); /* Subtle purple tint */
+    border: 2px solid rgba(167, 139, 250, 0.6); /* Purple border */
+    color: #f1f5f9;
     font-size: 2rem;
     text-align: center;
     letter-spacing: 10px;
-    border-radius: 8px;
-    padding: 10px;
-    width: 180px;
+    border-radius: 12px;
+    padding: 12px;
+    width: 220px;
     outline: none;
-    transition: border-color 0.2s;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
 }
-#login-pin-input:focus {
-    border-color: var(--accent);
+#login-pin-input:focus, #reg-pin-input:focus {
+    border-color: #a78bfa;
+    box-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
+    background: rgba(139, 92, 246, 0.2);
 }
 
 .error-msg {
     color: #f87171;
     font-size: 0.85rem;
     margin-top: 8px;
+    font-weight: 600;
 }
 
 .info-msg {

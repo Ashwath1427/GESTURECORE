@@ -23,15 +23,7 @@ export class TransformSystem {
         this.transformControl.showYZ = false;
         this.transformControl.showXZ = false;
         
-        // Hide the infinite axis lines that appear when hovering/dragging
-        // TransformControls uses THREE.Line for these long constraint axes
-        this.transformControl.traverse((child) => {
-            if (child.isLine || child.isLineSegments) {
-                if (child.material) {
-                    child.material.visible = false;
-                }
-            }
-        });
+        // (Removed dangerous traverse block that was hiding gizmo lines)
         
         this.transformControl.addEventListener('dragging-changed', (event) => {
             this.orbitControls.enabled = !event.value;

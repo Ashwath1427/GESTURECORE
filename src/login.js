@@ -4,8 +4,10 @@ import { LoginUI } from './login-ui.js';
 import { FaceDetectorSystem } from './face-detect.js';
 import { FaceRecognitionSystem } from './face-recognition.js';
 import { PinAuth } from './pin-auth.js';
+import { RegisterPage } from './register.js';
 
 export async function runLoginGate() {
+    const regPage = new RegisterPage();
     const ui = new LoginUI();
     const faceDetect = new FaceDetectorSystem(ui);
     const faceRec = new FaceRecognitionSystem(ui);
@@ -179,14 +181,46 @@ export async function runLoginGate() {
     });
 }
 
+// ── Session Persistence ──────────────────────────────────────
+// After a successful login, remember the session so page refresh
+// doesn't force the user through the login gate again.
+const SESSION_KEY = 'shapeflow_session_ts';
+const SESSION_MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+function hasValidSession() {
+    const ts = sessionStorage.getItem(SESSION_KEY);
+    if (!ts) return false;
+    return (Date.now() - parseInt(ts, 10)) < SESSION_MAX_AGE_MS;
+}
+
+function markSessionActive() {
+    sessionStorage.setItem(SESSION_KEY, Date.now().toString());
+}
+
+function bootEditor() {
+    // Hide the login overlay and show the app
+    const loginOverlay = document.getElementById('login-overlay');
+    if (loginOverlay) loginOverlay.classList.add('hidden');
+    const appEl = document.getElementById('app');
+    if (appEl) appEl.classList.remove('hidden');
+
+    window.app = new App();
+    window.gestureSystem = new GestureSystem();
+}
+
 // Start Login Gate when DOM is ready
 window.addEventListener('DOMContentLoaded', async () => {
+    // Fast path: if already authenticated this browser session, skip login
+    if (hasValidSession()) {
+        bootEditor();
+        return;
+    }
+
     try {
         const authenticated = await runLoginGate();
         if (authenticated) {
-            // Boot the editor
-            window.app = new App();
-            window.gestureSystem = new GestureSystem();
+            markSessionActive();
+            bootEditor();
         }
     } catch (err) {
         console.error('Login failed catastrophically:', err);

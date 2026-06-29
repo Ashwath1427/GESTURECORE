@@ -11,6 +11,7 @@ export class LoginUI {
         
         this.btnStart = document.getElementById('btn-login-start');
         this.btnPin = document.getElementById('btn-login-pin');
+        this.btnRegister = document.getElementById('btn-login-register');
         this.btnEnroll = document.getElementById('btn-login-enroll');
         this.pinInput = document.getElementById('login-pin-input');
         this.pinError = document.getElementById('login-pin-error');
