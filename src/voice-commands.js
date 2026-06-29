@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { parseDesignVoiceCommand } from './design-voice.js';
-import { createGLKHouse, createRocket, create2BHKHouse, createVilla, createModernHouse, createTraditionalHouse, addGardenToHouse, addPoolToHouse, addFenceToHouse, addDrivewayToHouse, addGarageToHouse } from './house-templates.js';
+import { createGLKHouse, createRocket, createAeroplane, create2BHKHouse, createVilla, createModernHouse, createTraditionalHouse, addGardenToHouse, addPoolToHouse, addFenceToHouse, addDrivewayToHouse, addGarageToHouse } from './house-templates.js';
 import { applyColorToHousePart } from './style-presets.js';
 
 function normalizeTranscript(raw) {
@@ -18,6 +18,21 @@ const WORD_NUMS = {
     six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
     eleven: 11, twelve: 12, fifteen: 15, twenty: 20
 };
+
+// Shared named-color → hex map used by both single-object and all-object coloring
+const COLOR_WORDS = {
+    red: '#ff4d4d', blue: '#4d79ff', green: '#4dff4d', yellow: '#ffff4d',
+    orange: '#ff9933', purple: '#b34dff', violet: '#b34dff', pink: '#ff69b4',
+    white: '#ffffff', black: '#1a1a1a', gold: '#ffd700', cyan: '#00ffff',
+    brown: '#8b4513', grey: '#808080', gray: '#808080'
+};
+
+function extractColorHex(t) {
+    for (const word in COLOR_WORDS) {
+        if (t.includes(word)) return COLOR_WORDS[word];
+    }
+    return null;
+}
 
 function parseAddCommand(t) {
     // digit: "add 3 cubes"
@@ -80,12 +95,29 @@ export function parseVoiceCommand(rawText) {
         }
     }
     
+    // Color ALL objects ("make everything red", "color all blue", "turn all green",
+    // "change everything to gold"). Only fires when an explicit "all/everything" scope
+    // word is present AND a known color is found; otherwise falls through to normal rules.
+    if (text.includes('everything') || text.includes('all object') || text.includes('every object') ||
+        text.includes('whole scene') || text.includes('color all') || text.includes('colour all') ||
+        text.includes('paint all') || text.includes('change all') || text.includes('turn all') ||
+        text.includes('make all')) {
+        const allHex = extractColorHex(text);
+        if (allHex) return { type: 'SET_COLOR_ALL', color: allHex };
+    }
+
     // House Builder Context
     if (text.match(/(?:build|make|create)\s+(?:a\s+)?house/) || text.includes('simple house')) {
         return { type: 'BUILD_HOUSE_TEMPLATE', template: 'glk-house' };
     }
     if (text.match(/(?:build|make|create)\s+(?:a\s+)?(?:rocket|rocker|trug)/)) {
         return { type: 'BUILD_ROCKET' };
+    }
+    // Aeroplane (imported Tinkercad model). "make a boat" is mapped here per request,
+    // along with the natural aeroplane/airplane/jet/aircraft words.
+    if (text.match(/\b(boat|aeroplane|airplane|aircraft|jet)\b/) ||
+        text.match(/(?:build|make|create|load|show|give me)\s+(?:a\s+|an\s+|the\s+)?plane\b/)) {
+        return { type: 'BUILD_AEROPLANE' };
     }
     if (text.includes('villa')) {
         return { type: 'BUILD_HOUSE_TEMPLATE', template: 'villa' };
@@ -219,6 +251,26 @@ function handleSelectObject(name, app) {
     }
 }
 
+// Apply a color to an object (works for a single mesh OR a group/template by
+// traversing every child mesh). Returns true if at least one material changed.
+function setColorDeep(obj, colorHex) {
+    if (!obj) return false;
+    let changed = false;
+    obj.traverse(node => {
+        if (node.isMesh && node.material) {
+            const mats = Array.isArray(node.material) ? node.material : [node.material];
+            mats.forEach(m => {
+                if (m && m.color) {
+                    m.color.set(colorHex);
+                    m.needsUpdate = true;
+                    changed = true;
+                }
+            });
+        }
+    });
+    return changed;
+}
+
 export function executeVoiceCommand(cmd) {
     if (!window.app) return false;
     const app = window.app;
@@ -338,6 +390,16 @@ export function executeVoiceCommand(cmd) {
                     app.objectRegistry.addObject(rocketGroup);
                     app.transformSystem.selectObject(rocketGroup);
                     if (app.uiManager) app.uiManager.showToast(`Built a Rocket!`);
+                    success = true;
+                }
+                break;
+            }
+            case 'BUILD_AEROPLANE': {
+                const planeGroup = createAeroplane(THREE);
+                if (planeGroup) {
+                    app.objectRegistry.addObject(planeGroup);
+                    app.transformSystem.selectObject(planeGroup);
+                    if (app.uiManager) app.uiManager.showToast(`Built an Aeroplane!`);
                     success = true;
                 }
                 break;
@@ -528,10 +590,29 @@ export function executeVoiceCommand(cmd) {
             }
             case 'SET_COLOR': {
                 const target = app.transformSystem.selectedObject;
-                if (target && target.material) {
-                    target.material.color.set(cmd.color);
-                    success = true;
+                if (target) {
+                    // Works for single meshes and for grouped templates (house/rocket/aeroplane)
+                    if (setColorDeep(target, cmd.color)) {
+                        if (app.uiManager) app.uiManager.showToast('Color applied');
+                        success = true;
+                    }
+                } else if (app.uiManager) {
+                    app.uiManager.showToast('Select an object first, or say "color all <color>"');
                 }
+                break;
+            }
+            case 'SET_COLOR_ALL': {
+                const objs = (app.objectRegistry && app.objectRegistry.objects) || [];
+                let n = 0;
+                objs.forEach(o => { if (setColorDeep(o, cmd.color)) n++; });
+                if (app.uiManager) {
+                    app.uiManager.showToast(n > 0 ? `Colored ${n} object(s)` : 'No objects to color');
+                }
+                // Persist the recolor so it survives reload
+                if (window.PersistenceManager && app.objectRegistry) {
+                    window.PersistenceManager.saveScene(app.objectRegistry.objects);
+                }
+                success = n > 0;
                 break;
             }
             case 'MOVE_OBJECT': {

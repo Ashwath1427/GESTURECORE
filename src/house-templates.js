@@ -198,6 +198,68 @@ export function createRocket(THREE_ref) {
 }
 
 // ============================================================
+// TEMPLATE 1C — Aeroplane (Imported Tinkercad Model)
+// ============================================================
+export function createAeroplane(THREE_ref) {
+    const group = new THREE.Group();
+    group.name = 'Aeroplane (GLK)';
+    group.userData.isAeroplane = true;
+    group.userData.templateType = 'aeroplane';
+    group.userData.templateName = 'Aeroplane';
+
+    const mtlLoader = new MTLLoader();
+    mtlLoader.setPath('assets/aeroplane/');
+    mtlLoader.load('obj.mtl', (materials) => {
+        materials.preload();
+        const objLoader = new OBJLoader();
+        objLoader.setMaterials(materials);
+        objLoader.setPath('assets/aeroplane/');
+        objLoader.load('tinker.obj', (object) => {
+            // Tinkercad exports are large and Z-up; scale down and stand upright
+            object.scale.set(0.05, 0.05, 0.05);
+            object.rotation.x = -Math.PI / 2;
+            object.updateMatrixWorld(true);
+
+            // Re-center horizontally and place on the ground
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            object.position.x = -center.x;
+            object.position.z = -center.z;
+            object.position.y = -box.min.y;
+
+            object.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                    if (child.material) {
+                        child.material.side = THREE.DoubleSide;
+                        if (child.material.opacity < 1.0) {
+                            child.material.transparent = true;
+                            child.material.depthWrite = false;
+                        }
+                        child.material.needsUpdate = true;
+                    }
+
+                    // Allow the user to click and select this part of the aeroplane
+                    child.userData.isSelectable = true;
+                }
+            });
+
+            group.add(object);
+            animateConstruction(group, THREE);
+            window.dispatchEvent(new Event('app-scene-updated'));
+        }, undefined, (error) => {
+            console.error('Error loading aeroplane OBJ:', error);
+        });
+    }, undefined, (error) => {
+        console.error('Error loading aeroplane MTL:', error);
+    });
+
+    return group;
+}
+
+// ============================================================
 // TEMPLATE 2 — 2BHK House
 // ============================================================
 export function create2BHKHouse(THREE_ref) {
