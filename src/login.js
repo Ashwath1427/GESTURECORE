@@ -16,6 +16,26 @@ export async function runLoginGate() {
     // Set global guest mode flag to false by default
     window.isGuestMode = false;
 
+    // ── Admin Face Registration coordination ──────────────────────
+    // register.js drives the registration UI (PIN 77256542) on its own.
+    // Here we make sure that while registration is open it gets exclusive
+    // webcam access and the background login scan can't boot the app or
+    // pop the PIN panel underneath it.
+    let inRegistration = false;
+    const btnRegister = document.getElementById('btn-login-register');
+    if (btnRegister) {
+        btnRegister.addEventListener('click', () => {
+            inRegistration = true;
+            faceDetect.stopCamera(); // free the webcam for the registration video
+        });
+    }
+    // Finishing/cancelling registration reloads so the camera, models, and any
+    // newly-registered faces are re-initialised cleanly for the login flow.
+    ['btn-reg-cancel-dash', 'btn-reg-cancel-pin'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', () => window.location.reload());
+    });
+
     ui.setAuthStatus('Waiting', 'waiting');
 
     // 1. Try to start camera and load models
@@ -148,6 +168,7 @@ export async function runLoginGate() {
             // Face was stable, try recognition
             try {
                 const matchResult = await faceRec.attemptMatch();
+                if (inRegistration) return; // admin is registering; don't boot or prompt
                 if (matchResult && matchResult.success) {
                     const welcomeName = matchResult.personId.charAt(0).toUpperCase() + matchResult.personId.slice(1);
                     const greeting = document.getElementById('login-greeting');
@@ -163,6 +184,7 @@ export async function runLoginGate() {
                 }
             } catch (err) {
                 console.error('Face recognition error:', err);
+                if (inRegistration) return; // admin is registering; don't prompt
                 const pinOk = await pinAuth.waitForPinSuccess();
                 resolve(pinOk);
             }

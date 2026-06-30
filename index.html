@@ -107,9 +107,43 @@
                         <button id="btn-login-enroll" class="primary-btn glass-btn">Enroll Face Now</button>
                     </div>
 
-                    <div class="login-actions">
+                    <!-- Admin Face Registration: PIN gate -->
+                    <div id="register-pin-panel" class="hidden">
+                        <p>Enter the 8-digit Admin PIN to register faces</p>
+                        <input type="password" id="reg-pin-input" maxlength="8" placeholder="••••••••" autocomplete="off" style="padding: 10px; font-size: 1.2em; width: 170px; text-align: center; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; letter-spacing: 3px;" />
+                        <p id="reg-pin-error" class="error-msg hidden" style="color: #ff4444; margin-top: 10px;">Incorrect PIN</p>
+                        <div class="login-actions" style="margin-top: 14px;">
+                            <button id="btn-reg-cancel-pin" class="secondary-btn glass-btn">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Admin Face Registration: dashboard (camera + list) -->
+                    <div id="register-dashboard-panel" class="hidden">
+                        <h3 style="color: #ccc; margin: 0 0 8px;">Register New Face</h3>
+                        <div id="reg-status" style="color: #4ade80; min-height: 20px; margin-bottom: 8px;">Initializing Camera...</div>
+                        <div id="reg-camera-container" style="position: relative; width: 100%; max-width: 320px; margin: 0 auto 12px; border-radius: 8px; overflow: hidden; border: 2px solid #4ade80;">
+                            <video id="reg-video" autoplay playsinline muted style="width: 100%; display: block;"></video>
+                            <canvas id="reg-canvas" style="position: absolute; top: 0; left: 0; width: 100%;"></canvas>
+                        </div>
+                        <div class="input-group" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 14px;">
+                            <input type="text" id="reg-name-input" placeholder="Enter person's name..." style="padding: 10px 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.6); color: white; font-size: 1em; flex: 1; max-width: 220px;" />
+                            <button id="btn-register-face" class="primary-btn glass-btn" disabled>Scan &amp; Register</button>
+                        </div>
+                        <div class="face-list" style="background: rgba(0,0,0,0.5); padding: 14px; border-radius: 8px; text-align: left;">
+                            <h3 style="color: white; margin: 0 0 10px; font-size: 1em;">Registered Faces</h3>
+                            <div id="faces-container">
+                                <p style="color: #aaa;">Loading faces...</p>
+                            </div>
+                        </div>
+                        <div class="login-actions" style="margin-top: 14px;">
+                            <button id="btn-reg-cancel-dash" class="secondary-btn glass-btn">Done / Back to Login</button>
+                        </div>
+                    </div>
+
+                    <div class="login-actions" id="main-login-actions">
                         <button id="btn-login-start" class="primary-btn glass-btn">Start Face Scan</button>
                         <button id="btn-login-pin" class="secondary-btn glass-btn">Use PIN Instead</button>
+                        <button id="btn-login-register" class="secondary-btn glass-btn">Register Face (Admin)</button>
                     </div>
                 </div>
             </div>
