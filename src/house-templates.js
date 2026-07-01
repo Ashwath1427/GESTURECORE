@@ -91,7 +91,7 @@ export function createGLKHouse(THREE_ref) {
         objLoader.setPath('assets/glk-house/');
         objLoader.load('tinker.obj', (object) => {
             // Tinkercad exports are typically huge and rotated
-            object.scale.set(0.05, 0.05, 0.05); 
+            object.scale.set(0.1, 0.1, 0.1); 
             object.rotation.x = -Math.PI / 2;
             object.updateMatrixWorld(true); // Must update before bounds calculation
             
@@ -156,7 +156,7 @@ export function createRocket(THREE_ref) {
         objLoader.setMaterials(materials);
         objLoader.setPath('assets/rocket/');
         objLoader.load('tinker.obj', (object) => {
-            object.scale.set(0.05, 0.05, 0.05); 
+            object.scale.set(0.1, 0.1, 0.1); 
             object.rotation.x = -Math.PI / 2;
             object.updateMatrixWorld(true);
             
@@ -217,7 +217,7 @@ export function createAeroplane(THREE_ref) {
         objLoader.setPath('assets/aeroplane/');
         objLoader.load('tinker.obj', (object) => {
             // Tinkercad exports are large and Z-up; scale down and stand upright
-            object.scale.set(0.05, 0.05, 0.05);
+            object.scale.set(0.1, 0.1, 0.1);
             object.rotation.x = -Math.PI / 2;
             object.updateMatrixWorld(true);
 
@@ -266,7 +266,7 @@ export function createAeroplane(THREE_ref) {
 // smaller and MUCH faster to parse (no giant text file to tokenize). Normalizes
 // to a visible size and grounds it, so models are never microscopic/off-screen.
 // ============================================================
-export function createImportedModel(folder, displayName, targetSize = 8) {
+export function createImportedModel(folder, displayName, targetSize = 16) {
     const group = new THREE.Group();
     group.name = displayName || folder;
     group.userData.isImportedModel = true;

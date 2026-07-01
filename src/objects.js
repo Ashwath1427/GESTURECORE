@@ -234,7 +234,7 @@ export class ObjectRegistry {
             }
         });
         
-        this.normalizeAndGroundObject(object, 15); // Templates can be slightly larger
+        this.normalizeAndGroundObject(object, 20); // Templates/imported models: larger display size
 
         this.scene.add(object);
         this.objects.push(object);
