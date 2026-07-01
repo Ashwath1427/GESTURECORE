@@ -32,6 +32,8 @@ export class LoginUI {
         this.enrollPanel.classList.add('hidden');
         this.btnStart.classList.remove('hidden');
         this.btnPin.classList.remove('hidden');
+        // "Register Face (Admin)" only belongs on the PIN screen, not the face-scan screen.
+        if (this.btnRegister) this.btnRegister.classList.add('hidden');
         this.pinInput.value = '';
         this.pinError.classList.add('hidden');
         
@@ -100,18 +102,21 @@ export class LoginUI {
         this.enrollPanel.classList.add('hidden');
         this.pinPanel.classList.remove('hidden');
         this.pinInput.focus();
-        
+
         this.btnStart.classList.add('hidden');
         this.btnPin.classList.add('hidden');
+        // The admin registration entry point lives on the PIN screen only.
+        if (this.btnRegister) this.btnRegister.classList.remove('hidden');
     }
-    
+
     showEnrollPanel() {
         this.cameraPanel.classList.add('hidden');
         this.pinPanel.classList.add('hidden');
         this.enrollPanel.classList.remove('hidden');
-        
+
         this.btnStart.classList.add('hidden');
         this.btnPin.classList.add('hidden');
+        if (this.btnRegister) this.btnRegister.classList.add('hidden');
     }
 
     showPinError(text) {

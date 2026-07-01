@@ -13,7 +13,11 @@ export const GUEST_CONFIG = {
 };
 
 export const FACE_CONFIG = {
-    matchThreshold: 0.55, // Raised to 0.55 to accommodate real owner based on test data
+    matchThreshold: 0.52, // Absolute ceiling on the winner's distance (lower = stricter)
+    matchMargin: 0.06, // Winner must be at least this much closer than the 2nd-best person.
+                       // This is what actually rejects strangers: an unregistered face is
+                       // roughly equidistant from every reference, so its margin is tiny.
+    requireConsistentWinner: true, // The SAME person must win every consecutive frame in the streak
     minDetectionsBeforeAccept: 3, // Require 3 strictly consecutive stable detections
     stableFramesRequired: 3,
     debug: true, // Enable dev overlays

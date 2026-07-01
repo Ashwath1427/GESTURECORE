@@ -2,6 +2,21 @@ import { FACE_CONFIG } from './config.js';
 
 const ADMIN_PIN = '77256542';
 const PERMANENT_FACES = ['ashwath', 'lavith', 'saicharan'];
+const DYNAMIC_FACES_KEY = 'shapeFlowDynamicFaces';
+
+// Registered faces are persisted in localStorage so registration works on static
+// hosting (GitHub Pages) with no backend. The login flow reads the same key.
+function loadDynamicFaces() {
+    try {
+        return JSON.parse(localStorage.getItem(DYNAMIC_FACES_KEY)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveDynamicFaces(faces) {
+    localStorage.setItem(DYNAMIC_FACES_KEY, JSON.stringify(faces));
+}
 
 export class RegisterPage {
     constructor() {
@@ -170,28 +185,23 @@ export class RegisterPage {
 
         this.btnRegister.disabled = true;
         this.btnRegister.textContent = 'Saving...';
-        
+
         try {
-            const response = await fetch('/api/faces', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: name,
-                    descriptor: Array.from(this.currentDescriptor)
-                })
-            });
-            
-            if (response.ok) {
-                this.nameInput.value = '';
-                this.statusText.textContent = 'Face registered successfully!';
-                await this.fetchAndRenderFaces();
+            const faces = loadDynamicFaces();
+            const descriptor = Array.from(this.currentDescriptor);
+            const existingIdx = faces.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
+            if (existingIdx >= 0) {
+                faces[existingIdx] = { name, descriptor }; // re-register / overwrite
             } else {
-                const err = await response.text();
-                alert(`Error registering face: ${err}`);
+                faces.push({ name, descriptor });
             }
+            saveDynamicFaces(faces);
+            this.nameInput.value = '';
+            this.statusText.textContent = 'Face registered successfully!';
+            await this.fetchAndRenderFaces();
         } catch (err) {
             console.error(err);
-            alert('Network error while registering face.');
+            alert('Error saving face: ' + err.message);
         } finally {
             this.btnRegister.textContent = 'Scan & Register';
             this.updateRegisterButton();
@@ -200,12 +210,8 @@ export class RegisterPage {
     
     async fetchAndRenderFaces() {
         try {
-            const response = await fetch('/api/faces');
-            let dynamicFaces = [];
-            if (response.ok) {
-                dynamicFaces = await response.json();
-            }
-            
+            const dynamicFaces = loadDynamicFaces();
+
             this.facesContainer.innerHTML = '';
             
             // First render permanent faces
@@ -274,20 +280,14 @@ export class RegisterPage {
     
     async deleteFace(name) {
         if (!confirm(`Are you sure you want to delete the face for ${name}?`)) return;
-        
+
         try {
-            const response = await fetch(`/api/faces/${encodeURIComponent(name)}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                await this.fetchAndRenderFaces();
-            } else {
-                alert('Failed to delete face.');
-            }
+            const faces = loadDynamicFaces().filter(f => f.name.toLowerCase() !== name.toLowerCase());
+            saveDynamicFaces(faces);
+            await this.fetchAndRenderFaces();
         } catch (err) {
             console.error(err);
-            alert('Network error while deleting face.');
+            alert('Error deleting face: ' + err.message);
         }
     }
 }

@@ -145,21 +145,26 @@ export class FaceRecognitionSystem {
     }
 
     async tryLoadDynamicReferences() {
+        // Faces registered via the Admin panel are stored in localStorage so the app
+        // works on static hosting (GitHub Pages) where there is no backend server.
         try {
-            const response = await fetch('/api/faces');
-            if (response.ok) {
-                const dynamicFaces = await response.json();
+            const raw = localStorage.getItem('shapeFlowDynamicFaces');
+            if (raw) {
+                const dynamicFaces = JSON.parse(raw);
+                let loaded = 0;
                 dynamicFaces.forEach(face => {
+                    if (!face || !face.name || !Array.isArray(face.descriptor)) return;
                     this.enrolledDescriptors.push({
                         personId: face.name,
-                        name: 'Dynamic Registration',
+                        name: 'Registered',
                         descriptor: new Float32Array(face.descriptor)
                     });
+                    loaded++;
                 });
-                console.log(`[FaceRec] Loaded ${dynamicFaces.length} dynamic reference(s) from server.`);
+                console.log(`[FaceRec] Loaded ${loaded} registered face(s) from localStorage.`);
             }
         } catch (e) {
-            console.error(`[FaceRec] Failed to load dynamic references:`, e);
+            console.error(`[FaceRec] Failed to load registered faces from localStorage:`, e);
         }
     }
 
@@ -259,6 +264,7 @@ export class FaceRecognitionSystem {
         
         let successfulMatches = 0;
         let attempts = 0;
+        let lastWinner = null; // Track which person won the previous frame (for consistency)
         const MAX_ATTEMPTS = 15; // Don't loop forever
         
         let activeDescriptors = this.enrolledDescriptors;
@@ -342,40 +348,61 @@ export class FaceRecognitionSystem {
                 personMedians[pId] = median(groupedScores[pId].slice(0, 3));
             }
             
-            // Find the best person
+            // Find the best (and second-best) person by median distance
             let bestPerson = null;
             let bestPersonScore = Infinity;
+            let secondBestScore = Infinity;
             for (const pId in personMedians) {
                 if (personMedians[pId] < bestPersonScore) {
+                    secondBestScore = bestPersonScore;
                     bestPersonScore = personMedians[pId];
                     bestPerson = pId;
+                } else if (personMedians[pId] < secondBestScore) {
+                    secondBestScore = personMedians[pId];
                 }
             }
 
-            const diagStr = `[Diag] Winner:${bestPerson} | Score:${bestPersonScore.toFixed(3)} < ${FACE_CONFIG.matchThreshold}`;
+            // Margin between the winner and the next-closest DIFFERENT person.
+            // A registered owner is distinctly closest to their own cluster (large margin).
+            // A stranger sits roughly equidistant from everyone (tiny margin) -> rejected.
+            // If only one identity is enrolled there is no runner-up, so the margin test passes.
+            const margin = secondBestScore === Infinity ? Infinity : (secondBestScore - bestPersonScore);
+
+            const passesThreshold = bestPersonScore < FACE_CONFIG.matchThreshold;
+            const passesMargin = margin >= FACE_CONFIG.matchMargin;
+
+            const marginStr = margin === Infinity ? 'inf' : margin.toFixed(3);
+            const diagStr = `[Diag] Winner:${bestPerson} | Score:${bestPersonScore.toFixed(3)}<${FACE_CONFIG.matchThreshold} | Margin:${marginStr}>=${FACE_CONFIG.matchMargin}`;
 
             if (FACE_CONFIG.debug) {
-                console.log(`[FaceRec] Live Match -> Winner: ${bestPerson} | Top 3 Images: ` + top3.map(x => `${x.labelKey}(${x.distance.toFixed(3)})`).join(', '));
-                console.log(`[FaceRec] Grouped Scores -> Ashwath: ${personMedians['ashwath'] ? personMedians['ashwath'].toFixed(3) : 'N/A'} | Sai: ${personMedians['sai'] ? personMedians['sai'].toFixed(3) : 'N/A'}`);
+                console.log(`[FaceRec] Live Match -> Winner: ${bestPerson} | Score: ${bestPersonScore.toFixed(3)} | 2nd: ${secondBestScore === Infinity ? 'N/A' : secondBestScore.toFixed(3)} | Margin: ${marginStr} | Top 3 Images: ` + top3.map(x => `${x.labelKey}(${x.distance.toFixed(3)})`).join(', '));
             }
 
-            // Improve the Success Rule - Check the winner's score
-            if (bestPersonScore < FACE_CONFIG.matchThreshold) {
+            // Success Rule: winner must be (a) below the absolute threshold, (b) clearly
+            // closer than any other person, and (c) the SAME person across the whole streak.
+            if (passesThreshold && passesMargin) {
+                // Consistency guard: if the winner changed mid-streak, the match is ambiguous.
+                if (FACE_CONFIG.requireConsistentWinner && lastWinner !== null && lastWinner !== bestPerson) {
+                    successfulMatches = 0;
+                }
+                lastWinner = bestPerson;
                 successfulMatches++;
                 if (FACE_CONFIG.debug) console.log(`[FaceRec] Match! (${successfulMatches}/${FACE_CONFIG.minDetectionsBeforeAccept})`);
-                
+
                 this.ui.setAuthStatus(`${diagStr} -> PASS (${successfulMatches}/${FACE_CONFIG.minDetectionsBeforeAccept})`, 'active');
 
                 if (successfulMatches >= FACE_CONFIG.minDetectionsBeforeAccept) {
                     this.printReferenceSummaryTable();
                     this.ui.setAuthStatus(`Face Verified Successfully`, 'success');
                     console.log(`[FaceRec] SECURE LOGIN SUCCESS. Matched Identity: ${bestPerson}`);
-                    return { success: true, personId: bestPerson }; 
+                    return { success: true, personId: bestPerson };
                 }
             } else {
-                if (FACE_CONFIG.debug) console.log(`[FaceRec] Frame rejected. Score too high.`);
+                const why = !passesThreshold ? 'score too high' : 'ambiguous (margin too small)';
+                if (FACE_CONFIG.debug) console.log(`[FaceRec] Frame rejected: ${why}.`);
                 this.ui.setAuthStatus(`${diagStr} -> REJECT`, 'error');
-                successfulMatches = 0; 
+                successfulMatches = 0;
+                lastWinner = null;
             }
             
             await new Promise(r => setTimeout(r, 50)); // Allow UI to breathe
