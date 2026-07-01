@@ -124,6 +124,8 @@ class VoiceMode {
 
         // 3. Command Parse
         const cmd = parseVoiceCommand(text);
+        // TEMP debug: shows the full voice pipeline in the console.
+        console.log('[VoicePipeline] heard:', JSON.stringify(text), '-> parsed:', cmd);
         this.ui.setDebugCmd(`${cmd.type} (${cmd.score || 0})`);
 
         if (cmd.type === 'UNKNOWN') {

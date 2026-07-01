@@ -168,18 +168,6 @@ export function parseVoiceCommand(rawText) {
         return { type: 'HOUSE_PAINT', part: paintMatch[1], color: paintMatch[2] };
     }
     
-    // Constructs & Dynamic Fallbacks
-    const constructMatch = text.match(/(?:make|build|create)\s+(?:(?:a|an|the)\s+)?([a-zA-Z0-9]+)/);
-    if (constructMatch || text.includes('plant a tree')) {
-        let bp = constructMatch ? constructMatch[1] : 'tree';
-        if (bp === 'plane') bp = 'airplane';
-        if (bp === 'skyscraper') bp = 'tower';
-        if (bp === 'spaceship' || bp === 'flying saucer') bp = 'ufo';
-        if (bp === 'arch') bp = 'gate';
-        if (bp === 'tent') bp = 'pyramid';
-        return { type: 'CONSTRUCT_BLUEPRINT', blueprint: bp };
-    }
-    
     // Camera
     if (text.includes('center camera') || text.includes('reset camera') || text.includes('default camera') || text.includes('camera reset') || text.includes('reset cam') || text.includes('default view') || text.includes('reset view')) {
         return { type: 'RESET_DEFAULT_CAMERA' };
@@ -251,6 +239,21 @@ export function parseVoiceCommand(rawText) {
     
     // Help
     if (text.includes('help') || text.includes('what can you do') || text.includes('commands')) return { type: 'SHOW_HELP' };
+
+    // Constructs & Dynamic Fallbacks — LAST resort, so specific commands above
+    // (school template, scale "make bigger", colors "make it red", etc.) win.
+    // Any remaining "make/build/create X" becomes a blueprint, or a synthesized
+    // placeholder if X isn't a known blueprint.
+    const constructMatch = text.match(/(?:make|build|create)\s+(?:(?:a|an|the)\s+)?([a-zA-Z0-9]+)/);
+    if (constructMatch || text.includes('plant a tree')) {
+        let bp = constructMatch ? constructMatch[1] : 'tree';
+        if (bp === 'plane') bp = 'airplane';
+        if (bp === 'skyscraper') bp = 'tower';
+        if (bp === 'spaceship' || bp === 'flying saucer') bp = 'ufo';
+        if (bp === 'arch') bp = 'gate';
+        if (bp === 'tent') bp = 'pyramid';
+        return { type: 'CONSTRUCT_BLUEPRINT', blueprint: bp };
+    }
 
     return { type: 'UNKNOWN', raw: text };
 }

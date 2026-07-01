@@ -9,6 +9,8 @@ export class ConstructRunner {
         if (!blueprintKey || typeof blueprintKey !== 'string') return;
         blueprintKey = blueprintKey.trim();
         let bp = BLUEPRINTS[blueprintKey.toLowerCase()];
+        // TEMP debug: shows blueprint resolution (known vs synthesized placeholder).
+        console.log(`[Construct] request="${blueprintKey}" ->`, bp ? 'known blueprint' : `NOT a blueprint (known: ${Object.keys(BLUEPRINTS).join(', ')}) -> synthesizing placeholder`);
         if (!bp) {
             // Dynamic fallback for any random object requested
             bp = {
