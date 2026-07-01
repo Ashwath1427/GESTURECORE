@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ── Helper: Create a standard material ───────────────────────
 function mat(color) {
@@ -260,9 +261,10 @@ export function createAeroplane(THREE_ref) {
 }
 
 // ============================================================
-// Generic imported-model loader (assets/<folder>/obj.mtl + tinker.obj)
-// Normalizes ANY Tinkercad export to a visible size and grounds it on the grid,
-// so models don't end up microscopic (hardcoded scale) or off-screen.
+// Generic imported-model loader (assets/<folder>/model.glb).
+// GLB is binary glTF: same geometry/materials as the Tinkercad OBJ but far
+// smaller and MUCH faster to parse (no giant text file to tokenize). Normalizes
+// to a visible size and grounds it, so models are never microscopic/off-screen.
 // ============================================================
 export function createImportedModel(folder, displayName, targetSize = 8) {
     const group = new THREE.Group();
@@ -271,50 +273,61 @@ export function createImportedModel(folder, displayName, targetSize = 8) {
     group.userData.templateType = folder;
     group.userData.templateName = displayName || folder;
 
-    const path = `assets/${folder}/`;
-    const mtlLoader = new MTLLoader();
-    mtlLoader.setPath(path);
-    mtlLoader.load('obj.mtl', (materials) => {
-        materials.preload();
-        const objLoader = new OBJLoader();
-        objLoader.setMaterials(materials);
-        objLoader.setPath(path);
-        objLoader.load('tinker.obj', (object) => {
-            // Tinkercad exports are Z-up: stand them upright.
-            object.rotation.x = -Math.PI / 2;
-            object.updateMatrixWorld(true);
+    const finalizeModel = (object) => {
+        object.updateMatrixWorld(true);
 
-            // Normalize to a consistent visible size regardless of native units.
-            let box = new THREE.Box3().setFromObject(object);
-            let size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z) || 1;
-            object.scale.setScalar(targetSize / maxDim);
-            object.updateMatrixWorld(true);
+        // Normalize to a consistent visible size regardless of native units.
+        let box = new THREE.Box3().setFromObject(object);
+        let size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+        object.scale.setScalar(targetSize / maxDim);
+        object.updateMatrixWorld(true);
 
-            // Re-center horizontally and sit flat on the ground.
-            box = new THREE.Box3().setFromObject(object);
-            const center = box.getCenter(new THREE.Vector3());
-            object.position.x -= center.x;
-            object.position.z -= center.z;
-            object.position.y -= box.min.y;
+        // Re-center horizontally and sit flat on the ground.
+        box = new THREE.Box3().setFromObject(object);
+        const center = box.getCenter(new THREE.Vector3());
+        object.position.x -= center.x;
+        object.position.z -= center.z;
+        object.position.y -= box.min.y;
 
-            object.traverse(child => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                    if (child.material) {
-                        child.material.side = THREE.DoubleSide;
-                        child.material.needsUpdate = true;
-                    }
-                    child.userData.isSelectable = true;
+        object.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                if (child.material) {
+                    child.material.side = THREE.DoubleSide;
+                    child.material.needsUpdate = true;
                 }
-            });
+                child.userData.isSelectable = true;
+            }
+        });
 
-            group.add(object);
-            animateConstruction(group, THREE);
-            window.dispatchEvent(new Event('app-scene-updated'));
-        }, undefined, (err) => console.error(`[Model] OBJ load failed for ${folder}:`, err));
-    }, undefined, (err) => console.error(`[Model] MTL load failed for ${folder}:`, err));
+        group.add(object);
+        animateConstruction(group, THREE);
+        window.dispatchEvent(new Event('app-scene-updated'));
+    };
+
+    const path = `assets/${folder}/`;
+    // Fast path: compressed binary GLB.
+    new GLTFLoader().load(`${path}model.glb`, (gltf) => {
+        gltf.scene.rotation.x = -Math.PI / 2; // Tinkercad geometry is Z-up
+        finalizeModel(gltf.scene);
+    }, undefined, (glbErr) => {
+        // Fallback: original OBJ+MTL if the GLB is missing/unreadable.
+        console.warn(`[Model] GLB failed for ${folder}, falling back to OBJ:`, glbErr);
+        const mtlLoader = new MTLLoader();
+        mtlLoader.setPath(path);
+        mtlLoader.load('obj.mtl', (materials) => {
+            materials.preload();
+            const objLoader = new OBJLoader();
+            objLoader.setMaterials(materials);
+            objLoader.setPath(path);
+            objLoader.load('tinker.obj', (object) => {
+                object.rotation.x = -Math.PI / 2; // Tinkercad OBJ is Z-up
+                finalizeModel(object);
+            }, undefined, (err) => console.error(`[Model] OBJ load failed for ${folder}:`, err));
+        }, undefined, (err) => console.error(`[Model] MTL load failed for ${folder}:`, err));
+    });
 
     return group;
 }
