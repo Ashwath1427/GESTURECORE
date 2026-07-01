@@ -34,20 +34,35 @@ function extractColorHex(t) {
     return null;
 }
 
+// Shapes the object registry can actually build (singular forms).
+const KNOWN_SHAPES = ['cube', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'capsule', 'pyramid', 'disc', 'ring', 'wedge'];
+
+function isKnownShape(word) {
+    if (!word) return false;
+    let s = word.toLowerCase();
+    if (s.endsWith('s') && s !== 'torus') s = s.slice(0, -1); // singularize
+    return KNOWN_SHAPES.includes(s);
+}
+
 function parseAddCommand(t) {
+    // Accept many creation verbs, not just "add" — but only commit to an ADD
+    // when the target word is a REAL shape, so "make it red" / "create a house"
+    // fall through to the color/construct rules instead of misfiring here.
+    const VERB = '(?:add|create|make|spawn|place|insert|generate|build|put|new)';
+
     // digit: "add 3 cubes"
-    const d = t.match(/add\s+(\d+)\s+(\w+)/);
-    if (d) return { qty: parseInt(d[1]), shape: d[2] };
-    
+    const d = t.match(new RegExp(`${VERB}\\s+(\\d+)\\s+(\\w+)`));
+    if (d && isKnownShape(d[2])) return { qty: parseInt(d[1]), shape: d[2] };
+
     // word: "add five cubes"
     const wKeys = Object.keys(WORD_NUMS).join('|');
-    const w = t.match(new RegExp(`add\\s+(${wKeys})\\s+(\\w+)`));
-    if (w) return { qty: WORD_NUMS[w[1]], shape: w[2] };
-    
-    // single: "add cube" or "add a cube"
-    const s = t.match(/add\s+(?:a\s+)?(\w+)/);
-    if (s) return { qty: 1, shape: s[1] };
-    
+    const w = t.match(new RegExp(`${VERB}\\s+(${wKeys})\\s+(\\w+)`));
+    if (w && isKnownShape(w[2])) return { qty: WORD_NUMS[w[1]], shape: w[2] };
+
+    // single: "add cube" / "create a cube" / "spawn an sphere" / "make the cone"
+    const s = t.match(new RegExp(`${VERB}\\s+(?:a\\s+|an\\s+|the\\s+)?(\\w+)`));
+    if (s && isKnownShape(s[1])) return { qty: 1, shape: s[1] };
+
     return null;
 }
 
@@ -84,8 +99,10 @@ export function parseVoiceCommand(rawText) {
     if (text.includes('duplicate') || text.includes('copy') || text.includes('clone') || text.includes('make another') || text.includes('make a copy') || text.includes('copy that') || text.includes('clone that')) return { type: 'DUPLICATE_SELECTED' };
     if (text.includes('delete') || text.includes('remove') || text.includes('erase') || text.includes('get rid of') || text.includes('destroy') || text.includes('clear that') || text.includes('delete that')) return { type: 'DELETE_SELECTED' };
     
-    // Object Creation (Multi-add)
-    if (text.includes('add ')) {
+    // Object Creation (Multi-add). Verbs (add/create/make/spawn/...) are handled
+    // inside parseAddCommand, which only commits when the target is a real shape,
+    // so ambiguous phrases fall through to the color/scale/construct rules below.
+    {
         const addCmd = parseAddCommand(text);
         if (addCmd) {
             // Strip plural 's' if present

@@ -1,13 +1,13 @@
-import { SceneManager } from './scene.js?v=3';
-import { ObjectRegistry } from './objects.js?v=3';
-import { TransformSystem } from './transform.js?v=3';
-import { UIManager } from './ui.js?v=3';
-import { lockScreenSystem } from './lock-screen.js?v=3';
-import { DemoMode } from './demo-mode.js?v=3';
-import { buildSchoolCampus } from './templates-school.js?v=3';
-import { PersistenceManager } from './persistence.js?v=3';
-import { ConstructRunner } from './construct-runner.js?v=3';
-import { DesignModeHouse } from './design-mode-house.js?v=3';
+import { SceneManager } from './scene.js?v=6';
+import { ObjectRegistry } from './objects.js?v=6';
+import { TransformSystem } from './transform.js?v=6';
+import { UIManager } from './ui.js?v=6';
+import { lockScreenSystem } from './lock-screen.js?v=6';
+import { DemoMode } from './demo-mode.js?v=6';
+import { buildSchoolCampus } from './templates-school.js?v=6';
+import { PersistenceManager } from './persistence.js?v=6';
+import { ConstructRunner } from './construct-runner.js?v=6';
+import { DesignModeHouse } from './design-mode-house.js?v=6';
 
 class App {
     constructor() {
