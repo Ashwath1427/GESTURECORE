@@ -18,10 +18,13 @@ export class SceneManager {
         this.camera.position.set(25, 20, 25);
         this.camera.lookAt(0, 0, 0);
 
-        // Setup renderer
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        // Setup renderer. powerPreference asks for the discrete/high-perf GPU.
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+        // Cap pixel ratio: on a Retina display devicePixelRatio is 2-3, which renders
+        // 4-9x the pixels every frame and is the #1 cause of lag. Cap at 2 (and use
+        // 1.5 on very high-DPI screens) for smooth framerate with no visible loss.
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.devicePixelRatio > 2 ? 1.5 : 2));
         this.container.appendChild(this.renderer.domElement);
 
         // Orbit Controls
