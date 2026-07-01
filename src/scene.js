@@ -74,6 +74,10 @@ export class SceneManager {
 
         // Calculate bounding box center to handle larger scaled/complex objects
         const box = new THREE.Box3().setFromObject(target);
+        // Guard: an object with no geometry yet (e.g. an imported model whose async
+        // OBJ hasn't loaded) has an empty box -> getCenter() = NaN. Framing toward NaN
+        // corrupts the camera and makes the WHOLE scene stop rendering. Bail out.
+        if (box.isEmpty()) return false;
         const endTgt = new THREE.Vector3();
         box.getCenter(endTgt);
 

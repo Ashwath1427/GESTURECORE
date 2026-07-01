@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { parseDesignVoiceCommand } from './design-voice.js';
-import { createGLKHouse, createRocket, createAeroplane, create2BHKHouse, createVilla, createModernHouse, createTraditionalHouse, addGardenToHouse, addPoolToHouse, addFenceToHouse, addDrivewayToHouse, addGarageToHouse } from './house-templates.js';
+import { createGLKHouse, createRocket, createAeroplane, createImportedModel, create2BHKHouse, createVilla, createModernHouse, createTraditionalHouse, addGardenToHouse, addPoolToHouse, addFenceToHouse, addDrivewayToHouse, addGarageToHouse } from './house-templates.js';
 import { applyColorToHousePart } from './style-presets.js';
 
 function normalizeTranscript(raw) {
@@ -123,23 +123,29 @@ export function parseVoiceCommand(rawText) {
         if (allHex) return { type: 'SET_COLOR_ALL', color: allHex };
     }
 
-    // House Builder Context
+    // ── Imported 3D models (assets/<folder>/obj.mtl + tinker.obj) ──────────
+    if (text.includes('apartment')) {
+        return { type: 'BUILD_MODEL', folder: 'apartments', name: 'Apartments' };
+    }
+    if (text.match(/(?:build|make|create|add|show|load)\s+(?:a\s+)?car\b/) || /\bcar\b/.test(text)) {
+        return { type: 'BUILD_MODEL', folder: 'car', name: 'Car' };
+    }
     // "modern/simple house" -> instant procedural template (no large asset load).
     if (text.includes('modern house') || text.includes('simple house')) {
         return { type: 'BUILD_HOUSE_TEMPLATE', template: 'modern' };
     }
     // Generic "make/build a house" -> the imported GLK Tinkercad model.
     if (text.match(/(?:build|make|create)\s+(?:a\s+)?house/) || text.includes('glk') || text.includes('tinkercad house') || text.includes('imported house')) {
-        return { type: 'BUILD_HOUSE_TEMPLATE', template: 'glk-house' };
+        return { type: 'BUILD_MODEL', folder: 'glk-house', name: 'GLK House' };
     }
     if (text.match(/(?:build|make|create)\s+(?:a\s+)?(?:rocket|rocker|trug)/)) {
-        return { type: 'BUILD_ROCKET' };
+        return { type: 'BUILD_MODEL', folder: 'rocket', name: 'Rocket' };
     }
     // Aeroplane (imported Tinkercad model). "make a boat" is mapped here per request,
     // along with the natural aeroplane/airplane/jet/aircraft words.
     if (text.match(/\b(boat|aeroplane|airplane|aircraft|jet)\b/) ||
         text.match(/(?:build|make|create|load|show|give me)\s+(?:a\s+|an\s+|the\s+)?plane\b/)) {
-        return { type: 'BUILD_AEROPLANE' };
+        return { type: 'BUILD_MODEL', folder: 'aeroplane', name: 'Aeroplane' };
     }
     if (text.includes('villa')) {
         return { type: 'BUILD_HOUSE_TEMPLATE', template: 'villa' };
@@ -221,7 +227,8 @@ export function parseVoiceCommand(rawText) {
     if (text.includes('stop demo') || text.includes('cancel demo') || text.includes('exit demo') || text.includes('end demo')) return { type: 'STOP_DEMO_MODE' };
     
     // School Template
-    if (text.includes('school') || text.includes('campus') || text.includes('load school') || text.includes('build school') || text.includes('make school') || text.includes('show school') || text.includes('school model') || text.includes('school demo')) return { type: 'LOAD_SCHOOL_TEMPLATE' };
+    if (text.includes('campus') || text.includes('school demo')) return { type: 'LOAD_SCHOOL_TEMPLATE' };
+    if (text.includes('school')) return { type: 'BUILD_MODEL', folder: 'school', name: 'School' };
     
     // Colors
     if (text.includes('red')) return { type: 'SET_COLOR', color: '#ff4d4d' };
@@ -401,6 +408,16 @@ export function executeVoiceCommand(cmd) {
                     if (app.uiManager) app.uiManager.showToast(`Built a ${cmd.template} house!`);
                     success = true;
                 }
+                break;
+            }
+            case 'BUILD_MODEL': {
+                // Imported 3D model from assets/<folder>/ (car, school, apartments,
+                // aeroplane, rocket, glk-house). Loads + normalizes asynchronously.
+                const modelGroup = createImportedModel(cmd.folder, cmd.name);
+                app.objectRegistry.addObject(modelGroup);
+                app.transformSystem.selectObject(modelGroup);
+                if (app.uiManager) app.uiManager.showToast(`Loading ${cmd.name}…`);
+                success = true;
                 break;
             }
             case 'BUILD_ROCKET': {

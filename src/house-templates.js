@@ -260,6 +260,66 @@ export function createAeroplane(THREE_ref) {
 }
 
 // ============================================================
+// Generic imported-model loader (assets/<folder>/obj.mtl + tinker.obj)
+// Normalizes ANY Tinkercad export to a visible size and grounds it on the grid,
+// so models don't end up microscopic (hardcoded scale) or off-screen.
+// ============================================================
+export function createImportedModel(folder, displayName, targetSize = 8) {
+    const group = new THREE.Group();
+    group.name = displayName || folder;
+    group.userData.isImportedModel = true;
+    group.userData.templateType = folder;
+    group.userData.templateName = displayName || folder;
+
+    const path = `assets/${folder}/`;
+    const mtlLoader = new MTLLoader();
+    mtlLoader.setPath(path);
+    mtlLoader.load('obj.mtl', (materials) => {
+        materials.preload();
+        const objLoader = new OBJLoader();
+        objLoader.setMaterials(materials);
+        objLoader.setPath(path);
+        objLoader.load('tinker.obj', (object) => {
+            // Tinkercad exports are Z-up: stand them upright.
+            object.rotation.x = -Math.PI / 2;
+            object.updateMatrixWorld(true);
+
+            // Normalize to a consistent visible size regardless of native units.
+            let box = new THREE.Box3().setFromObject(object);
+            let size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            object.scale.setScalar(targetSize / maxDim);
+            object.updateMatrixWorld(true);
+
+            // Re-center horizontally and sit flat on the ground.
+            box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            object.position.x -= center.x;
+            object.position.z -= center.z;
+            object.position.y -= box.min.y;
+
+            object.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    if (child.material) {
+                        child.material.side = THREE.DoubleSide;
+                        child.material.needsUpdate = true;
+                    }
+                    child.userData.isSelectable = true;
+                }
+            });
+
+            group.add(object);
+            animateConstruction(group, THREE);
+            window.dispatchEvent(new Event('app-scene-updated'));
+        }, undefined, (err) => console.error(`[Model] OBJ load failed for ${folder}:`, err));
+    }, undefined, (err) => console.error(`[Model] MTL load failed for ${folder}:`, err));
+
+    return group;
+}
+
+// ============================================================
 // TEMPLATE 2 — 2BHK House
 // ============================================================
 export function create2BHKHouse(THREE_ref) {
