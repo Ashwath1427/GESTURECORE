@@ -88,6 +88,12 @@ export class UIManager {
         }
     }
 
+    updateHierarchy() {
+        // This build has no scene hierarchy/outliner panel to refresh, so this
+        // is a safe no-op. It exists so the 'app-object-added' handler (and any
+        // other caller) doesn't throw "updateHierarchy is not a function".
+    }
+
     setupEventListeners() {
         window.addEventListener('app-object-added', (e) => {
             if (e.detail && e.detail.object) {
