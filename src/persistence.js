@@ -7,33 +7,7 @@ export class PersistenceManager {
     static get MANUAL_SCENE_KEY() {
         return window.isGuestMode ? 'shape_flow_guest_manual' : 'shape_flow_manual';
     }
-    static get SESSION_KEY() {
-        return window.isGuestMode ? 'shape_flow_guest_session_active' : 'shape_flow_session_active';
-    }
     static saveTimeout = null;
-
-    static _migrateLegacyKeys() {
-        const legacyScene = localStorage.getItem('gesturecore_scene');
-        if (legacyScene && !localStorage.getItem(this.SCENE_KEY)) {
-            localStorage.setItem(this.SCENE_KEY, legacyScene);
-        }
-        const legacySession = localStorage.getItem('gesturecore_session_active');
-        if (legacySession && !localStorage.getItem(this.SESSION_KEY)) {
-            localStorage.setItem(this.SESSION_KEY, legacySession);
-        }
-    }
-
-    static shouldBypassLogin() {
-        this._migrateLegacyKeys();
-        const lastLogin = parseInt(localStorage.getItem(this.SESSION_KEY));
-        if (isNaN(lastLogin)) return false;
-        const isExpired = (Date.now() - lastLogin) > (1000 * 60 * 60); // 1 Hour expiry
-        return !isExpired && localStorage.getItem(this.SCENE_KEY) !== null;
-    }
-
-    static markSessionActive() {
-        localStorage.setItem(this.SESSION_KEY, Date.now().toString());
-    }
 
     static saveScene(sceneObjects, isManual = false) {
         if (!sceneObjects) return;
@@ -112,9 +86,5 @@ export class PersistenceManager {
             console.error("Failed to restore scene from local storage", e);
             return false;
         }
-    }
-
-    static _refreshStatusLabel(indicator) {
-        // Obsolete
     }
 }

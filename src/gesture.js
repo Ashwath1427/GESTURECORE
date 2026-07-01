@@ -279,51 +279,6 @@ class GestureSystem {
         return GESTURE_RAW.NONE;
     }
 
-    drawDebugOverlay(ctx, lms, classifiedGesture, holdMs) {
-        const indexUp = lms[8].y < lms[6].y;
-        const middleUp = lms[12].y < lms[10].y;
-        const ringUp = lms[16].y < lms[14].y;
-        const pinkyUp = lms[20].y < lms[18].y;
-        
-        let upCount = 0;
-        if (indexUp) upCount++;
-        if (middleUp) upCount++;
-        if (ringUp) upCount++;
-        if (pinkyUp) upCount++;
-
-        const ts = window.app ? window.app.transformSystem : null;
-        let camDist = 'N/A';
-        if (ts && ts.camera && ts.orbitControls) {
-            camDist = ts.camera.position.distanceTo(ts.orbitControls.target).toFixed(2);
-        }
-
-        const distThumbIndex = Math.hypot(lms[4].x - lms[5].x, lms[4].y - lms[5].y, lms[4].z - lms[5].z);
-
-        ctx.fillStyle = 'white';
-        ctx.font = '9px Arial';
-        const lines = [
-            `Gesture: ${classifiedGesture} [${window.app && window.app.lastScore ? window.app.lastScore : 'N/A'}/100]`,
-            `FingersUp: ${upCount}`,
-            `IndexUp: ${indexUp}`,
-            `MiddleUp: ${middleUp}`,
-            `RingUp: ${ringUp}`,
-            `PinkyUp: ${pinkyUp}`,
-            `ThumbIdxDst: ${distThumbIndex.toFixed(3)}`,
-            `HoldMs: ${Math.floor(holdMs)}`,
-            `CamDist: ${camDist}`
-        ];
-
-        if (this.lastRawDeltaX !== undefined) {
-            lines.push(`RawDeltaX: ${this.lastRawDeltaX.toFixed(5)}`);
-            lines.push(`CorrectedDeltaX: ${this.lastCorrectedDeltaX.toFixed(5)}`);
-            lines.push(`MirrorX: ${MIRROR_X}`);
-        }
-
-        lines.forEach((line, i) => {
-            ctx.fillText(line, 5, 12 + (i * 10));
-        });
-    }
-
     processResults(results) {
         this.canvasCtx.save();
         this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);

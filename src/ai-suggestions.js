@@ -47,16 +47,6 @@ function isColorWarm(hex) {
     return h < 60 || h > 300;
 }
 
-function isColorCool(hex) {
-    return !isColorWarm(hex);
-}
-
-function getComplementaryColor(hex) {
-    const { h, s, l } = hexToHSL(hex);
-    const compH = (h + 180) % 360;
-    return `hsl(${compH}, ${Math.min(s + 10, 100)}%, ${Math.max(40, Math.min(l, 60))}%)`;
-}
-
 // ── Scene Analysis ───────────────────────────────────────────
 function analyzeScene() {
     if (!window.app || !window.app.objectRegistry) return null;
@@ -154,7 +144,6 @@ const SMART_RULES = [
         check: (obj, scene) => scene && scene.allSameColor && scene.totalObjects > 1,
         generate: (obj, scene) => {
             const colorName = scene.colorNames[0];
-            const comp = getComplementaryColor(scene.firstColor);
             return `🎨 All ${scene.totalObjects} objects are ${colorName}. Try selecting one and changing its color to a complementary shade for better visual contrast.`;
         }
     },
@@ -434,9 +423,4 @@ export function generateSuggestions(selectedObject, maxSuggestions = 4) {
     }
     
     return suggestions;
-}
-
-// Keep the old export name for backwards compatibility
-export function getAllSuggestions(obj) {
-    return generateSuggestions(obj, 10);
 }

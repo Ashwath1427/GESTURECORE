@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 // Helper to create & position a mesh
 const addBlock = (registry, type, name, colorHex, w, h, d, px, py, pz) => {
     let mesh;

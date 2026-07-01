@@ -106,33 +106,6 @@ export function averageProfiles(profiles) {
 }
 
 
-export async function recordCommandAudio(stream, durationMs = 4000) {
-    if (!stream || !stream.active) throw new Error('No active mic stream available');
-
-    const recorder = new MediaRecorder(stream);
-    const chunks = [];
-
-    return await new Promise((resolve, reject) => {
-        recorder.ondataavailable = (e) => {
-            if (e.data.size > 0) chunks.push(e.data);
-        };
-
-        recorder.onerror = reject;
-
-        recorder.onstop = async () => {
-            const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-            resolve(blob);
-        };
-
-        recorder.start();
-        setTimeout(() => {
-            if (recorder.state === 'recording') {
-                recorder.stop();
-            }
-        }, durationMs);
-    });
-}
-
 export function compareVoiceProfiles(a, b) {
     if (!a || !b) return 0;
 

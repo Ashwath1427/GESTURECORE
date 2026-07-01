@@ -1,7 +1,6 @@
 // ============================================================
 // style-presets.js — Color maps, style presets, and apply helpers
 // ============================================================
-import * as THREE from 'three';
 
 // ── Color Map for voice command parsing ──────────────────────
 export const COLOR_MAP = {

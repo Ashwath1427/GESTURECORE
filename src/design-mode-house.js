@@ -7,7 +7,6 @@ import { HOUSE_TEMPLATES, addGarageToHouse, addGardenToHouse, addPoolToHouse, ad
 import { applyStylePreset, applyColorToHousePart } from './style-presets.js';
 import { generateSuggestions } from './ai-suggestions.js';
 import { createCommunityGrid, addHouseRow, AMENITY_CREATORS, createRoadSegment } from './community-layout.js';
-import { parseDesignVoiceCommand } from './design-voice.js';
 
 export class DesignModeHouse {
     constructor(app) {
@@ -33,10 +32,6 @@ export class DesignModeHouse {
         this.ui.onSuggestionApply = (s) => this.applySuggestion(s);
         this.ui.onSuggestionRefresh = () => this.refreshSuggestions();
         this.ui.onCommunityToggle = (a) => this.addAmenity(a);
-
-        // Listen for design mode events
-        window.addEventListener('app-enter-design-mode', () => this.enter());
-        window.addEventListener('app-exit-design-mode', () => this.exit());
     }
 
     // ============================================================

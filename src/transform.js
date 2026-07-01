@@ -134,26 +134,4 @@ export class TransformSystem {
         }
     }
 
-    getMode() {
-        return this.transformControl.getMode();
-    }
-
-    // Used by gesture pipeline
-    raycastFromScreen(x, y) {
-        this.mouse.x = x;
-        this.mouse.y = y;
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-        for (let i = 0; i < intersects.length; i++) {
-            let obj = intersects[i].object;
-            while (obj && obj !== this.scene) {
-                if (obj.userData.isSelectable) {
-                    return obj;
-                }
-                if (obj === this.transformControl) break;
-                obj = obj.parent;
-            }
-        }
-        return null;
-    }
 }

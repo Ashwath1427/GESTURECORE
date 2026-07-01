@@ -7,14 +7,12 @@ export class PinAuth {
         
         // Expose promise resolution
         this.resolveSuccess = null;
-        this.rejectFailure = null;
     }
 
     waitForPinSuccess() {
         return new Promise((resolve, reject) => {
             this.resolveSuccess = resolve;
-            this.rejectFailure = reject;
-            
+
             this.ui.showPinPanel();
             this.ui.setAuthStatus('PIN Required', 'waiting');
             

@@ -42,12 +42,6 @@ export class VoiceUIManager {
         }
     }
 
-    setVisualizerError(errorMsg) {
-        this.visualizerStatus.textContent = errorMsg;
-        this.visualizerMicDot.style.background = '#ef4444';
-        this.visualizerMicDot.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.6)';
-    }
-
     setSamplesCount(count) {
         this.samplesCountEl.textContent = count;
         if (count < 3) {

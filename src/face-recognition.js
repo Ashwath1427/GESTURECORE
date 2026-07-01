@@ -1,4 +1,4 @@
-import { AUTH_CONFIG, FACE_CONFIG } from './config.js';
+import { FACE_CONFIG } from './config.js';
 
 export class FaceRecognitionSystem {
     constructor(ui) {

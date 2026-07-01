@@ -1,8 +1,7 @@
 import { VoiceUIManager } from './voice-ui.js';
 import { createSpeechRecognizer } from './voice-recognition.js';
-import { discoverEnrollmentSamples, buildEnrollmentProfile, recordCommandAudio, extractSimpleVoiceFeatures, extractSpectralBands, compareVoiceProfiles } from './voice-print.js';
+import { discoverEnrollmentSamples, buildEnrollmentProfile, extractSimpleVoiceFeatures, extractSpectralBands, compareVoiceProfiles } from './voice-print.js';
 import { parseVoiceCommand, executeVoiceCommand } from './voice-commands.js';
-import { VoiceVisualizer } from './voice-visualizer.js';
 
 class VoiceMode {
     constructor() {
@@ -12,8 +11,7 @@ class VoiceMode {
         this.enrolledProfile = null;
         
         this.micStream = null;
-        this.visualizer = null;
-        
+
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         
         this.recognizer = createSpeechRecognizer({
@@ -90,11 +88,7 @@ class VoiceMode {
             this.ui.setModeState(false);
             this.recognizer.stop();
 
-            // Clean up visualizer and mic stream
-            if (this.visualizer) {
-                this.visualizer.stop();
-                this.visualizer = null;
-            }
+            // Clean up mic stream
             if (this.micStream) {
                 this.micStream.getTracks().forEach(t => t.stop());
                 this.micStream = null;
