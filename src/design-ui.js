@@ -191,7 +191,7 @@ export class DesignUI {
         list.innerHTML = suggestions.map((s, i) => `
             <div class="design-suggestion-card" data-index="${i}">
                 <p class="suggestion-text">${s.text}</p>
-                ${s.autoApply || s.autoAction ? `<button class="suggestion-apply-btn" data-suggestion-id="${s.id}">Apply</button>` : ''}
+                ${s.apply ? `<button class="suggestion-apply-btn" data-suggestion-id="${s.id}">Apply</button>` : ''}
             </div>
         `).join('');
 

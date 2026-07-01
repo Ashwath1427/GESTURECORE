@@ -285,11 +285,9 @@ export class DesignModeHouse {
     applySuggestion(suggestion) {
         if (!this.selectedHouse) return;
 
-        if (suggestion.autoApply) {
-            applyColorToHousePart(this.selectedHouse, suggestion.autoApply.part, suggestion.autoApply.color);
+        if (typeof suggestion.apply === 'function') {
+            suggestion.apply(this.selectedHouse);
             this.ui.showDesignToast('Applied suggestion!');
-        } else if (suggestion.autoAction) {
-            this.addPartToSelected(suggestion.autoAction.replace('add-', ''));
         }
 
         this.refreshSuggestions();
@@ -353,7 +351,7 @@ export class DesignModeHouse {
         const suggestions = generateSuggestions(this.selectedHouse);
         if (suggestions.length > 0) {
             // Read out the first (highest priority) suggestion
-            this.speak(suggestions[0].suggestion);
+            this.speak(suggestions[0].text);
         }
     }
 
