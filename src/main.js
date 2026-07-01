@@ -187,35 +187,12 @@ window.addEventListener('app-lock-requested', () => {
     lockScreenSystem.lockApp();
 });
 
-window.addEventListener('app-play-dps-video', () => {
-    console.log('[App] Playing DPS Nadergul Video');
-    const panel = document.getElementById('dps-video-panel');
-    const iframe = document.getElementById('dps-video-frame');
-    if (panel && iframe) {
-        // Set src with autoplay
-        iframe.src = 'https://www.youtube.com/embed/b1ZCvtF5bKA?autoplay=1&rel=0';
-        panel.classList.remove('hidden');
-    }
-});
-
 function initMain() {
     const lockBtn = document.getElementById('lock-app-btn');
     if (lockBtn) {
         lockBtn.addEventListener('click', () => {
             console.log('[App] Lock requested by button');
             lockScreenSystem.lockApp();
-        });
-    }
-
-    const closeVideoBtn = document.getElementById('btn-close-video');
-    if (closeVideoBtn) {
-        closeVideoBtn.addEventListener('click', () => {
-            const panel = document.getElementById('dps-video-panel');
-            const iframe = document.getElementById('dps-video-frame');
-            if (panel && iframe) {
-                panel.classList.add('hidden');
-                iframe.src = ''; // stop video
-            }
         });
     }
 

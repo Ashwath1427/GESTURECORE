@@ -210,9 +210,8 @@ export function parseVoiceCommand(rawText) {
     if (text.includes('start demo') || text.includes('run demo') || text.includes('begin demo') || text.includes('show demo') || text.includes('demo mode') || text.includes('play demo')) return { type: 'START_DEMO_MODE' };
     if (text.includes('stop demo') || text.includes('cancel demo') || text.includes('exit demo') || text.includes('end demo')) return { type: 'STOP_DEMO_MODE' };
     
-    // School Template & Video
+    // School Template
     if (text.includes('school') || text.includes('campus') || text.includes('load school') || text.includes('build school') || text.includes('make school') || text.includes('show school') || text.includes('school model') || text.includes('school demo')) return { type: 'LOAD_SCHOOL_TEMPLATE' };
-    if (text.includes('start video') || text.includes('play video') || text.includes('play nadergul video') || text.includes('start nadergul video')) return { type: 'PLAY_VIDEO' };
     
     // Colors
     if (text.includes('red')) return { type: 'SET_COLOR', color: '#ff4d4d' };
@@ -306,11 +305,6 @@ export function executeVoiceCommand(cmd) {
             }
             case 'LOAD_SCHOOL_TEMPLATE': {
                 if (app.loadTemplate) { app.loadTemplate('school'); success = true; }
-                break;
-            }
-            case 'PLAY_VIDEO': {
-                window.dispatchEvent(new Event('app-play-dps-video'));
-                success = true;
                 break;
             }
             case 'SELECT_OBJECT': {

@@ -742,13 +742,7 @@ class GestureSystem {
         } else if (this.state === GESTURE_STATES.ZOOM_IN_MODE || this.state === GESTURE_STATES.ZOOM_OUT_MODE) {
             // Mode cancellation rules at the bottom will return to IDLE. Do nothing here.
         } else if (this.state === GESTURE_STATES.IDLE) {
-            if (smoothedRaw === 'LEFT_FOUR_FINGERS' && timeHeld >= 1500) {
-                if (now >= this.zoomCooldownUntil) {
-                    window.dispatchEvent(new Event('app-play-dps-video'));
-                    this.zoomCooldownUntil = now + 5000;
-                    this.showBadge('▶️ Video Triggered');
-                }
-            } else if (smoothedRaw === 'LEFT_TWO_FINGERS' && timeHeld >= GESTURE.ZOOM_HOLD_MS) {
+            if (smoothedRaw === 'LEFT_TWO_FINGERS' && timeHeld >= GESTURE.ZOOM_HOLD_MS) {
                 if (now >= this.zoomCooldownUntil) {
                     window.dispatchEvent(new Event('app-center-cam-requested'));
                     this.zoomCooldownUntil = now + 700;
