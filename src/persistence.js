@@ -27,9 +27,16 @@ export class PersistenceManager {
             }))
         };
         const key = isManual ? this.MANUAL_SCENE_KEY : this.SCENE_KEY;
-        localStorage.setItem(key, JSON.stringify(data));
-        if (window.app && window.app.uiManager && !isManual) {
-            window.app.uiManager.showToast('Auto-Saved ✓');
+        // localStorage can throw (QuotaExceededError when full, or SecurityError when
+        // storage is blocked by browser settings/extensions in a normal window).
+        // Persistence must NEVER break object creation/rendering, so swallow it.
+        try {
+            localStorage.setItem(key, JSON.stringify(data));
+            if (window.app && window.app.uiManager && !isManual) {
+                window.app.uiManager.showToast('Auto-Saved ✓');
+            }
+        } catch (e) {
+            console.warn('[Persistence] saveScene skipped (storage full/blocked):', e);
         }
     }
 

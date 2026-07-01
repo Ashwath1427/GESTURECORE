@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Prevent the browser from serving a stale cached page (fixes "works in
+         incognito but not the normal window" caused by an old cached build). -->
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Shape Flow</title>
     <link rel="icon" type="image/jpeg" href="assets/shape-flow-logo.jpg">
     <link rel="stylesheet" href="style.css">
@@ -485,11 +490,11 @@
         });
     </script>
     <!-- Load Main App Logic -->
-    <script type="module" src="src/main.js?v=9"></script>
-    <script type="module" src="src/gesture.js?v=9"></script>
-    <script type="module" src="src/login.js?v=9"></script>
-    <script type="module" src="src/lock-screen.js?v=9"></script>
-    <script type="module" src="src/voice-mode.js?v=9"></script>
-    <script type="module" src="src/design-mode-house.js?v=9"></script>
+    <script type="module" src="src/main.js?v=10"></script>
+    <script type="module" src="src/gesture.js?v=10"></script>
+    <script type="module" src="src/login.js?v=10"></script>
+    <script type="module" src="src/lock-screen.js?v=10"></script>
+    <script type="module" src="src/voice-mode.js?v=10"></script>
+    <script type="module" src="src/design-mode-house.js?v=10"></script>
 </body>
 </html>
