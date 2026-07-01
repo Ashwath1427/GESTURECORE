@@ -68,9 +68,15 @@ class GestureSystem {
             
             this.toggleBtn.textContent = 'Loading MediaPipe...';
             
-            // Dynamic import to prevent main bundle crashes
-            const vision = await import(MEDIAPIPE_CDN);
+            // Dynamic import of the explicit ESM bundle. The package's "main" is a
+            // CommonJS file (vision_bundle.cjs); importing the bare package URL can
+            // resolve to CJS and yield undefined named exports. Point at the .mjs
+            // ESM bundle directly so FilesetResolver/HandLandmarker are always defined.
+            const vision = await import(`${MEDIAPIPE_CDN}/vision_bundle.mjs`);
             const { FilesetResolver, HandLandmarker } = vision;
+            if (!FilesetResolver || !HandLandmarker) {
+                throw new Error('MediaPipe vision module loaded but exports are missing');
+            }
             
             const filesetResolver = await FilesetResolver.forVisionTasks(`${MEDIAPIPE_CDN}/wasm`);
             this.handLandmarker = await HandLandmarker.createFromOptions(filesetResolver, {
@@ -137,20 +143,9 @@ class GestureSystem {
     }
 
     startDetectionLoop() {
-        window.lastMouseActivity = 0;
-        window.addEventListener('mousemove', () => {
-            window.lastMouseActivity = performance.now();
-        });
-
         const loop = () => {
             if (!this.webcamRunning) return;
-            
-            // If the user is actively using the mouse, pause gesture tracking to prevent interference
-            if (performance.now() - window.lastMouseActivity < 1000) {
-                this.animationFrameId = requestAnimationFrame(loop);
-                return;
-            }
-            
+
             if (this.video.readyState >= 2 && this.handLandmarker) {
                 let startTimeMs = performance.now();
                 if (!this.lastDetectionTime) this.lastDetectionTime = 0;

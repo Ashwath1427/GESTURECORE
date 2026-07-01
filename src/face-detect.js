@@ -21,7 +21,9 @@ export class FaceDetectorSystem {
     async initialize() {
         this.ui.setCameraStatus('Loading AI...', 'waiting');
         
-        const vision = await import(MEDIAPIPE_CDN);
+        // Import the explicit ESM bundle (package "main" is CommonJS, which can
+        // resolve to undefined named exports when imported as the bare package URL).
+        const vision = await import(`${MEDIAPIPE_CDN}/vision_bundle.mjs`);
         const { FilesetResolver, FaceDetector } = vision;
 
         const filesetResolver = await FilesetResolver.forVisionTasks(
