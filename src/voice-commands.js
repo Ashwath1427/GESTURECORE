@@ -124,14 +124,13 @@ export function parseVoiceCommand(rawText) {
     }
 
     // House Builder Context
-    // Explicit request for the imported Tinkercad model (loads a 26MB .obj async):
-    if (text.includes('glk') || text.includes('tinkercad house') || text.includes('imported house')) {
-        return { type: 'BUILD_HOUSE_TEMPLATE', template: 'glk-house' };
-    }
-    // Generic "make/build a house" -> reliable procedural template that renders
-    // instantly (no large async asset load, no empty-group normalization race).
-    if (text.match(/(?:build|make|create)\s+(?:a\s+)?house/) || text.includes('simple house')) {
+    // "modern/simple house" -> instant procedural template (no large asset load).
+    if (text.includes('modern house') || text.includes('simple house')) {
         return { type: 'BUILD_HOUSE_TEMPLATE', template: 'modern' };
+    }
+    // Generic "make/build a house" -> the imported GLK Tinkercad model.
+    if (text.match(/(?:build|make|create)\s+(?:a\s+)?house/) || text.includes('glk') || text.includes('tinkercad house') || text.includes('imported house')) {
+        return { type: 'BUILD_HOUSE_TEMPLATE', template: 'glk-house' };
     }
     if (text.match(/(?:build|make|create)\s+(?:a\s+)?(?:rocket|rocker|trug)/)) {
         return { type: 'BUILD_ROCKET' };

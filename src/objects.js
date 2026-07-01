@@ -158,6 +158,16 @@ export class ObjectRegistry {
         const size = new THREE.Vector3();
         box.getSize(size);
 
+        // Guard: an object with no renderable geometry yet (e.g. an imported OBJ
+        // model whose async load hasn't finished, so the Group is still empty) has an
+        // "empty" bounding box (min = +Infinity). Normalizing it would compute
+        // yOffset = -box.min.y = -Infinity and park the object off-screen, so the
+        // model is invisible once it finally loads. Bail out and leave it at origin;
+        // the model loader positions/scales itself correctly when it arrives.
+        if (box.isEmpty() || !isFinite(size.x) || !isFinite(size.y) || !isFinite(size.z)) {
+            return;
+        }
+
         // Normalize Scale
         const largestDimension = Math.max(size.x, size.y, size.z);
         if (largestDimension > 0) {
